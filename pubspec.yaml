@@ -1,0 +1,22 @@
+name: parse_language_academy
+description: Parseh Language Academy mobile-first landing screen.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/parseh_mascot.png
+  fonts:
+    - family: Estedad
+      fonts:
+        - asset: assets/fonts/Estedad-fa.ttf
+        - asset: assets/fonts/Estedad-latin.ttf

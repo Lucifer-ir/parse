@@ -1,0 +1,10 @@
+.dart_tool/
+.packages
+.pub-cache/
+build/
+pubspec.lock
+.idea/
+.vscode/
+android/.gradle/
+android/local.properties
+*.iml
