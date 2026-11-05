@@ -14,7 +14,8 @@ dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/parseh_mascot.png
+    - assets/images/logo-parse.png
+    - assets/images/character.webp
   fonts:
     - family: Estedad
       fonts:

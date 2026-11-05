@@ -1,8 +1,14 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() => runApp(const ParsehApp());
+
+// ────────────────────────── Palette ──────────────────────────
+const Color kGreen = Color(0xFF00A37A);
+const Color kGreenDeep = Color(0xFF007A5C);
+const Color kInk = Color(0xFF152E28);
+const Color kMuted = Color(0xFF8A9994);
+const Color kLine = Color(0xFFE1EDE8);
 
 class ParsehApp extends StatelessWidget {
   const ParsehApp({super.key});
@@ -11,38 +17,78 @@ class ParsehApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Parseh Language Academy',
+      title: 'پارسه | آموزشگاه زبان',
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Estedad',
-        scaffoldBackgroundColor: const Color(0xFFF5FBF8),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF008F70)),
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: kGreen,
+          surface: Colors.white,
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: kInk,
+          elevation: 0,
+          contentTextStyle: TextStyle(
+            fontFamily: 'Estedad',
+            color: Colors.white,
+            fontSize: 14,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)), // ← این خط
+          ),
+        ),
       ),
-      home: const WelcomePage(),
+      home: const SplashScreen(),
     );
   }
 }
 
-class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key});
+// ────────────────────────── Splash / Loading ──────────────────────────
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
   @override
-  State<WelcomePage> createState() => _WelcomePageState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _WelcomePageState extends State<WelcomePage>
+class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _float;
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  )..forward();
+
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0, .55, curve: Curves.easeOut),
+  );
+
+  late final Animation<double> _scale = Tween<double>(begin: .86, end: 1)
+      .animate(CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0, .55, curve: Curves.easeOutBack),
+  ));
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-    _float = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    Future<void>.delayed(const Duration(milliseconds: 2500), _goToWelcome);
+  }
+
+  void _goToWelcome() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (_, __, ___) => const WelcomePage(),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: child,
+        ),
+      ),
+    );
   }
 
   @override
@@ -53,48 +99,171 @@ class _WelcomePageState extends State<WelcomePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          const _AmbientBackground(),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      const _BrandHeader(),
-                      const Spacer(flex: 2),
-                      AnimatedBuilder(
-                        animation: _float,
-                        builder: (context, child) => Transform.translate(
-                          offset: Offset(0, -5 * _float.value),
-                          child: child,
-                        ),
-                        child: const _MascotCard(),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light, // آیکون‌های وضعیت سفید روی سبز
+      child: Scaffold(
+        backgroundColor: kGreen,
+        body: Center(
+          // ← همه‌چیز دقیقاً وسط صفحه
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FadeTransition(
+                opacity: _fade,
+                child: ScaleTransition(
+                  scale: _scale,
+                  child: Image.asset(
+                    'assets/images/logo-parse.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                    // لوگو کامل سفید می‌شود
+                    color: Colors.white,
+                    colorBlendMode: BlendMode.srcIn,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 26),
+              FadeTransition(
+                opacity: _fade,
+                child: Column(
+                  children: [
+                    const Text(
+                      'پارسه',
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
-                      const Spacer(flex: 2),
-                      _GlassButton(
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'LANGUAGE ACADEMY',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 6,
+                        color: Colors.white.withValues(alpha: .9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 56),
+              // نوار پیشرفت باریک و مینیمال
+              FadeTransition(
+                opacity: _fade,
+                child: SizedBox(
+                  width: 132,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (_, __) => LinearProgressIndicator(
+                        value: _controller.value,
+                        minHeight: 3,
+                        backgroundColor: Colors.white.withValues(alpha: .25),
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────── Welcome ──────────────────────────
+class WelcomePage extends StatefulWidget {
+  const WelcomePage({super.key});
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _floatController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _float =
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut);
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // کاراکتر کوچک‌تر و متناسب با ارتفاع صفحه
+    final double mascotSize =
+        (MediaQuery.sizeOf(context).height * .27).clamp(160.0, 230.0);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
+                child: Column(
+                  children: [
+                    const _Appear(child: _BrandHeader()),
+                    const Spacer(flex: 3),
+                    _Appear(
+                      delay: 220,
+                      child: _FloatingCharacter(
+                        animation: _float,
+                        size: mascotSize,
+                      ),
+                    ),
+                    const Spacer(flex: 3),
+                    const _Appear(
+                      delay: 420,
+                      child: Text(
+                        'یادگیری زبان را از این‌جا شروع کنید',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: kMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _Appear(
+                      delay: 540,
+                      child: _PrimaryButton(
                         label: 'ثبت‌نام',
-                        filled: true,
                         onPressed: () => _showMessage(context, 'ثبت‌نام'),
                       ),
-                      const SizedBox(height: 14),
-                      _GlassButton(
+                    ),
+                    const SizedBox(height: 12),
+                    _Appear(
+                      delay: 660,
+                      child: _SecondaryButton(
                         label: 'ورود',
-                        filled: false,
                         onPressed: () => _showMessage(context, 'ورود'),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -102,60 +271,15 @@ class _WelcomePageState extends State<WelcomePage>
   void _showMessage(BuildContext context, String action) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$action به‌زودی فعال می‌شود', textDirection: TextDirection.rtl),
+        content: Text('$action به‌زودی فعال می‌شود',
+            textDirection: TextDirection.rtl),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 }
 
-class _AmbientBackground extends StatelessWidget {
-  const _AmbientBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFF9FFFC), Color(0xFFE9F8F2), Color(0xFFFDFCF9)],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -90,
-          left: -70,
-          child: _Glow(color: const Color(0xFF9DEAD1).withValues(alpha: .36), size: 240),
-        ),
-        Positioned(
-          bottom: 90,
-          right: -110,
-          child: _Glow(color: const Color(0xFFB7E6D9).withValues(alpha: .38), size: 280),
-        ),
-      ],
-    );
-  }
-}
-
-class _Glow extends StatelessWidget {
-  const _Glow({required this.color, required this.size});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: SizedBox.square(dimension: size),
-        ),
-      );
-}
-
+// ────────────────────────── Brand header ──────────────────────────
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
@@ -163,114 +287,166 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF006F58), Color(0xFF00A77E)],
-          ).createShader(bounds),
-          child: const Text(
-            'PARSEH',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 48,
-              height: 1,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
-            ),
-          ),
+        Image.asset(
+          'assets/images/logo-parse.png',
+          width: 88,
+          height: 88,
+          fit: BoxFit.contain,
         ),
-        const SizedBox(height: 10),
-        Text(
-          'Language Academy',
-          style: TextStyle(
-            color: const Color(0xFF33453F).withValues(alpha: .72),
-            fontSize: 24,
-            height: 1,
-            fontWeight: FontWeight.w500,
-            letterSpacing: .3,
-          ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _hairline(),
+            const SizedBox(width: 12),
+            const Text(
+              'LANGUAGE ACADEMY',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 5,
+                color: kGreenDeep,
+              ),
+            ),
+            const SizedBox(width: 12),
+            _hairline(),
+          ],
         ),
       ],
     );
   }
+
+  Widget _hairline() => Container(
+        width: 26,
+        height: 1.2,
+        decoration: BoxDecoration(
+          color: kGreen.withValues(alpha: .35),
+          borderRadius: BorderRadius.circular(99),
+        ),
+      );
 }
 
-class _MascotCard extends StatelessWidget {
-  const _MascotCard();
+// کاراکتر بدون کارت، بدون سایه — فقط شناور
+class _FloatingCharacter extends StatelessWidget {
+  const _FloatingCharacter({required this.animation, required this.size});
+
+  final Animation<double> animation;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(42),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          width: 286,
-          height: 286,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .44),
-            borderRadius: BorderRadius.circular(42),
-            border: Border.all(color: Colors.white.withValues(alpha: .75), width: 1.4),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0B8F70).withValues(alpha: .12),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: Image.asset('assets/images/parseh_mascot.png', fit: BoxFit.contain),
-        ),
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, -6 * animation.value),
+        child: child,
+      ),
+      child: Image.asset(
+        'assets/images/character.webp',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
       ),
     );
   }
 }
 
-class _GlassButton extends StatelessWidget {
-  const _GlassButton({required this.label, required this.filled, required this.onPressed});
+// ────────────────────────── Buttons (تخت، بدون سایه) ──────────────────────────
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label, required this.onPressed});
 
   final String label;
-  final bool filled;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: SizedBox(
-          width: double.infinity,
-          height: 70,
-          child: filled
-              ? FilledButton(
-                  onPressed: onPressed,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF173B35).withValues(alpha: .92),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    elevation: 0,
-                  ),
-                  child: _text,
-                )
-              : OutlinedButton(
-                  onPressed: onPressed,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: .38),
-                    foregroundColor: const Color(0xFF173B35),
-                    side: BorderSide(color: Colors.white.withValues(alpha: .92), width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                  child: _text,
-                ),
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: kGreen,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(58),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label, textDirection: TextDirection.rtl),
+    );
+  }
+}
+
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: kInk,
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: kLine, width: 1.2),
+        minimumSize: const Size.fromHeight(58),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label, textDirection: TextDirection.rtl),
+    );
+  }
+}
+
+// ────────────────────────── Entrance animation ──────────────────────────
+class _Appear extends StatefulWidget {
+  const _Appear({this.delay = 0, required this.child});
+
+  final int delay;
+  final Widget child;
+
+  @override
+  State<_Appear> createState() => _AppearState();
+}
+
+class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, .06),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _controller,
+          curve: Curves.easeOutCubic,
+        )),
+        child: widget.child,
       ),
     );
   }
-
-  Widget get _text => Text(
-        label,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-      );
 }
