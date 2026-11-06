@@ -16,6 +16,7 @@ flutter:
   assets:
     - assets/images/logo-parse.png
     - assets/images/character.webp
+    - assets/images/home_illustration.png
   fonts:
     - family: Estedad
       fonts:

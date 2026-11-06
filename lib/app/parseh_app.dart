@@ -4,6 +4,10 @@ import 'app_routes.dart';
 import '../pages/welcome/welcome_screen.dart';
 import '../pages/auth/login_screen.dart';
 import '../pages/auth/register_screen.dart';
+import '../pages/dashboard/dashboard_shell.dart';
+import '../pages/dashboard/account_page.dart';
+import '../pages/account/settings_page.dart';
+import '../pages/account/notifications_page.dart';
 
 void runParsehApp() => runApp(const ParsehApp());
 
@@ -50,6 +54,10 @@ class ParsehApp extends StatelessWidget {
         AppRoutes.welcome: (_) => const WelcomeScreen(),
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.register: (_) => const RegisterScreen(),
+        AppRoutes.dashboard: (_) => const DashboardShell(),
+        AppRoutes.account: (_) => const AccountPage(),
+        AppRoutes.settings: (_) => const SettingsPage(),
+        AppRoutes.notifications: (_) => const NotificationsPage(),
       },
     );
   }

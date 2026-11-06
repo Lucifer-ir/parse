@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/app_routes.dart';
 
 // اگر این صفحه توی همون main.dart است، این ثابت‌ها رو تکراری تعریف نکن
 const Color kGreen = Color(0xFF00A37A);
@@ -114,7 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = false);
 
     _showInContainerSnack('ورود موفق! به پارسه خوش آمدی 👋');
-    // TODO: Navigator.of(context).pushReplacement(... صفحه اصلی ...);
+    Future<void>.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+    });
   }
 
   // ── UI ──────────────────────────────────────────────────
@@ -159,6 +162,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Align(
                                             alignment: AlignmentDirectional
