@@ -1,0 +1,77 @@
+name: Build and Save Android Artifacts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: true
+
+      - name: Prepare project
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          mkdir -p android/app
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create signing properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=app/upload-keystore.jks
+          EOF
+
+      - name: Build universal release APK
+        run: flutter build apk --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
+
+      - name: Build Google Play AAB
+        run: flutter build appbundle --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
+
+      - name: Prepare outputs
+        run: |
+          rm -rf outputs
+          mkdir -p outputs
+          cp build/app/outputs/flutter-apk/app-release.apk outputs/parseh-universal-release.apk
+          cp build/app/outputs/bundle/release/app-release.aab outputs/parseh-release.aab
+          if [ -d debug_symbols ]; then cp -r debug_symbols outputs/debug_symbols; fi
+          sha256sum outputs/*.apk outputs/*.aab > outputs/SHA256SUMS.txt
+
+      - name: Save artifacts in repository
+        run: |
+          git config user.name 'GitHub Actions Bot'
+          git config user.email 'actions@github.com'
+          git add outputs/
+          git commit -m "Build Android APK and AAB" || echo "No output changes"
+          git push
