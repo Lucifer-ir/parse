@@ -24,6 +24,10 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: const [
+                _GreetingBanner(),
+                SizedBox(height: 14),
+                _WeeklyStats(),
+                SizedBox(height: 18),
                 _TopDashboard(),
                 SizedBox(height: 20),
                 _NextExamCard(),
@@ -38,6 +42,87 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GreetingBanner extends StatelessWidget {
+  const _GreetingBanner();
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+        decoration:
+            BoxDecoration(color: _ink, borderRadius: BorderRadius.circular(22)),
+        child: Row(children: [
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                Text('سلام، آماده‌ای؟',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900)),
+                SizedBox(height: 5),
+                Text('امروز فقط ۱۵ دقیقه برای زبان وقت بگذار.',
+                    style: TextStyle(color: Color(0xFFBBD7D0), fontSize: 11))
+              ])),
+          Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                  color: _mint.withValues(alpha: .2), shape: BoxShape.circle),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: _mint, size: 23)),
+        ]),
+      );
+}
+
+class _WeeklyStats extends StatelessWidget {
+  const _WeeklyStats();
+  @override
+  Widget build(BuildContext context) => Row(children: const [
+        Expanded(
+            child: _StatPill(
+                value: '۷',
+                label: 'روز پیوسته',
+                icon: Icons.local_fire_department_rounded)),
+        SizedBox(width: 7),
+        Expanded(
+            child: _StatPill(
+                value: '۸۵٪',
+                label: 'میانگین نمره',
+                icon: Icons.trending_up_rounded)),
+        SizedBox(width: 7),
+        Expanded(
+            child: _StatPill(
+                value: '۱۲',
+                label: 'تمرین هفته',
+                icon: Icons.check_circle_outline_rounded)),
+      ]);
+}
+
+class _StatPill extends StatelessWidget {
+  final String value, label;
+  final IconData icon;
+  const _StatPill(
+      {required this.value, required this.label, required this.icon});
+  @override
+  Widget build(BuildContext context) => Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 5),
+      decoration: BoxDecoration(
+          color: _boxBg,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: _line)),
+      child: Column(children: [
+        Icon(icon, color: _mint, size: 20),
+        const SizedBox(height: 5),
+        Text(value,
+            style: const TextStyle(
+                color: _ink, fontSize: 15, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 2),
+        Text(label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _muted, fontSize: 9))
+      ]));
 }
 
 // ─── Top dashboard ─────────────────────────────────────────────────────
