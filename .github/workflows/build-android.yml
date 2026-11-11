@@ -53,6 +53,29 @@ jobs:
           storeFile=app/upload-keystore.jks
           EOF
 
+      - name: Validate release signing key
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          keytool -list -keystore android/app/upload-keystore.jks \
+            -storetype JKS \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" >/dev/null
+          keytool -importkeystore \
+            -srckeystore android/app/upload-keystore.jks \
+            -srcstoretype JKS \
+            -srcstorepass "$KEYSTORE_PASSWORD" \
+            -srckeypass "$KEY_PASSWORD" \
+            -srcalias "$KEY_ALIAS" \
+            -destkeystore /tmp/parseh-signing-verify.jks \
+            -deststoretype JKS \
+            -deststorepass verify-pass-123456 \
+            -destkeypass verify-pass-123456 \
+            -destalias "$KEY_ALIAS" \
+            -noprompt >/dev/null
+
       - name: Build universal release APK
         run: flutter build apk --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
 
