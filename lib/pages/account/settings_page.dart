@@ -103,13 +103,10 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool notifications = true;
   bool reminders = true;
-  bool darkMode = false;
   bool sounds = true;
   bool vibration = false;
   bool autoPlay = true;
-  String difficulty = 'متوسط';
   String dailyGoal = '۳۰ دقیقه';
-  String appLanguage = 'فارسی';
 
   @override
   Widget build(BuildContext context) => AppFrame(
@@ -194,18 +191,6 @@ class _SettingsPageState extends State<SettingsPage> {
                             subtitle: 'آخرین تغییر ۲ ماه پیش',
                             onTap: () {},
                           ),
-                          _Divider(),
-                          _ActionTile(
-                            icon: Icons.workspace_premium_outlined,
-                            iconColor: SettingsColors.gold,
-                            title: 'اشتراک پرمیوم',
-                            subtitle: 'مدت باقی‌مانده: ۲۳ روز',
-                            trailing: _Badge(
-                              text: 'فعال',
-                              color: SettingsColors.primary,
-                            ),
-                            onTap: () {},
-                          ),
                         ],
                       ),
                       const SizedBox(height: 18),
@@ -256,44 +241,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 18),
 
-                      // ── ظاهر ──
-                      _SectionTitle(title: 'ظاهر برنامه'),
-                      const SizedBox(height: 10),
-                      _SettingsCard(
-                        children: [
-                          _SwitchTile(
-                            icon: Icons.dark_mode_outlined,
-                            iconColor: SettingsColors.navy,
-                            title: 'حالت تاریک',
-                            subtitle: 'تغییر تم به تیره',
-                            value: darkMode,
-                            onChanged: (v) => setState(() => darkMode = v),
-                          ),
-                          _Divider(),
-                          _ActionTile(
-                            icon: Icons.language_rounded,
-                            iconColor: SettingsColors.primary,
-                            title: 'زبان برنامه',
-                            subtitle: appLanguage,
-                            onTap: () => _showLanguageSheet(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-
                       // ── ترجیحات یادگیری ──
                       _SectionTitle(title: 'ترجیحات یادگیری'),
                       const SizedBox(height: 10),
                       _SettingsCard(
                         children: [
-                          _ActionTile(
-                            icon: Icons.trending_up_rounded,
-                            iconColor: SettingsColors.primary,
-                            title: 'سطح دشواری',
-                            subtitle: difficulty,
-                            onTap: () => _showDifficultySheet(context),
-                          ),
-                          _Divider(),
+
                           _ActionTile(
                             icon: Icons.flag_outlined,
                             iconColor: SettingsColors.orange,
@@ -408,28 +361,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
   // ── Bottom sheets ───────────────────────────────────────────────
-
-  void _showLanguageSheet(BuildContext context) {
-    final options = ['فارسی', 'English', 'العربية', 'Türkçe'];
-    _showOptionsSheet(
-      context,
-      title: 'زبان برنامه',
-      options: options,
-      selected: appLanguage,
-      onSelect: (v) => setState(() => appLanguage = v),
-    );
-  }
-
-  void _showDifficultySheet(BuildContext context) {
-    final options = ['مبتدی', 'متوسط', 'پیشرفته'];
-    _showOptionsSheet(
-      context,
-      title: 'سطح دشواری',
-      options: options,
-      selected: difficulty,
-      onSelect: (v) => setState(() => difficulty = v),
-    );
-  }
 
   void _showGoalSheet(BuildContext context) {
     final options = ['۱۵ دقیقه', '۳۰ دقیقه', '۴۵ دقیقه', '۶۰ دقیقه'];
@@ -868,7 +799,7 @@ class _ActionTile extends StatelessWidget {
                 ),
               ),
               if (trailing != null) trailing!
-              else const Icon(Icons.chevron_left_rounded,
+              else const Icon(Icons.chevron_right_rounded,
                   color: SettingsColors.textGray, size: 22),
             ],
           ),

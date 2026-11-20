@@ -313,7 +313,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                                       color: Colors.white,
                                                     ),
                                                   )
-                                                : const Text('ورود'),
+                                                : const Text(
+                                                  'ورود',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Estedad',
+                                                    fontSize: 17,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
                                           ),
                                           const SizedBox(height: 28),
                                           Row(

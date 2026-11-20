@@ -34,7 +34,10 @@ class HomePage extends StatelessWidget {
                 SizedBox(height: 30),
                 _PracticesHeader(),
                 SizedBox(height: 18),
-                _PracticeCarousel(),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 9),
+                  child: _PracticeCarousel(),
+                ),
               ],
             ),
           ),
@@ -56,13 +59,13 @@ class _GreetingBanner extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                Text('سلام، آماده‌ای؟',
+                Text('سلام، آماده‌ای امیر جان؟',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w900)),
                 SizedBox(height: 5),
-                Text('امروز فقط ۱۵ دقیقه برای زبان وقت بگذار.',
+                Text('تایم آزمون و تمرین‌های امروزت رو مدیریت کن.',
                     style: TextStyle(color: Color(0xFFBBD7D0), fontSize: 11))
               ])),
           Container(
@@ -336,7 +339,7 @@ class _CourseCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -350,31 +353,31 @@ class _CourseCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          '۱',
-                          style: TextStyle(
-                            color: _ink,
-                            fontSize: 46,
-                            height: 1,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      RichText(
+                        textAlign: TextAlign.right,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'جلسه ',
+                              style: TextStyle(
+                                fontFamily: 'Estedad',
+                                color: _ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            TextSpan(
+                              text: '۱',
+                              style: TextStyle(
+                                fontFamily: 'Estedad',
+                                color: _ink,
+                                fontSize: 38,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 5),
-                        Text(
-                          'جلسه',
-                          style: TextStyle(
-                            color: _ink,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
                     SizedBox(height: 5),
                     Text(
                       'از ۲۰',
@@ -411,7 +414,7 @@ class _CourseCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.play_arrow_rounded, size: 20),
-              label: const Text('شروع آموزش'),
+              label: const Text('شروع آموزش', style: TextStyle(fontFamily: 'Estedad', fontSize: 14, fontWeight: FontWeight.w800)),
               style: FilledButton.styleFrom(
                 backgroundColor: _mintDeep,
                 foregroundColor: Colors.white,
@@ -680,222 +683,146 @@ class _PracticesHeader extends StatelessWidget {
   const _PracticesHeader();
 
   @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text(
-              'لیست تمرینات',
-              style: TextStyle(
-                color: _ink,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            Spacer(),
-            Text(
-              'همه',
-              style: TextStyle(
-                color: _ink,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 5),
-        Text(
-          'تمرین‌های پیشنهادی برای تقویت مهارت شما',
-          style: TextStyle(
-            color: _muted,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _PracticeCarousel extends StatelessWidget {
   const _PracticeCarousel();
 
   @override
-  Widget build(BuildContext context) {
-    final cardWidth = MediaQuery.sizeOf(context).width * .92;
-
-    return SizedBox(
-      height: 177,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 1),
-        children: [
-          _PracticeCard(
-            width: cardWidth,
-            eyebrow: 'ترم یک - English B2',
-            title: 'تمرین های اسپیکینگ',
-            description: 'تقویت مهارت صحبت کردن با\nتمرین‌های کاربردی و تعاملی',
-            imageAsset: 'assets/images/speaking_illustration.png',
-            fallbackIcon: Icons.mic_rounded,
-            buttonText: 'شروع تمرین',
-          ),
-          const SizedBox(width: 10),
-          _PracticeCard(
-            width: cardWidth,
-            eyebrow: 'واژگان روزانه',
-            title: 'تمرین کلمات',
-            description: 'یادگیری و مرور لغات جدید\nبرای گسترش دایره واژگان',
-            fallbackIcon: Icons.translate_rounded,
-            buttonText: 'شروع یادگیری',
-            isVocabulary: true,
-          ),
-          const SizedBox(width: 10),
-          _PracticeCard(
-            width: cardWidth,
-            eyebrow: 'ترم یک - English B2',
-            title: 'تمرین های لیسنینگ',
-            description: 'تقویت مهارت شنیداری با\nفایل‌های صوتی و تمرین تعاملی',
-            fallbackIcon: Icons.headphones_rounded,
-            buttonText: 'شروع تمرین',
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const _PracticeHub();
 }
 
-class _PracticeCard extends StatelessWidget {
-  final double width;
-  final String eyebrow;
-  final String title;
-  final String description;
-  final String? imageAsset;
-  final IconData fallbackIcon;
-  final String buttonText;
-  final bool isVocabulary;
+class _PracticeHub extends StatefulWidget {
+  const _PracticeHub({super.key});
 
-  const _PracticeCard({
-    required this.width,
-    required this.eyebrow,
-    required this.title,
-    required this.description,
-    required this.fallbackIcon,
-    required this.buttonText,
-    this.imageAsset,
-    this.isVocabulary = false,
-  });
+  @override
+  State<_PracticeHub> createState() => _PracticeHubState();
+}
+
+class _PracticeHubState extends State<_PracticeHub> {
+  int _selected = 0;
+  final List<String> _skills = const ['اسپیکینگ', 'لیسنینگ', 'رایتینگ', 'ریدینگ', 'گرامر', 'واژگان'];
+
+  final List<IconData> _icons = const [
+    Icons.mic_rounded, Icons.headphones_rounded, Icons.edit_note_rounded,
+    Icons.menu_book_rounded, Icons.rule_rounded, Icons.translate_rounded,
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: _boxBg,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _line, width: .8),
-      ),
-      child: Row(
-        children: [
-          // RTL: the text content is first, so it appears on the right.
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(15, 13, 13, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    eyebrow,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _ink,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    maxLines: 2,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton(
-                      onPressed: () {},
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFF0F1F2),
-                        foregroundColor: _ink,
-                        minimumSize: const Size(0, 35),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 23,
-                          vertical: 8,
-                        ),
-                        shape: const StadiumBorder(),
-                        textStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      child: Text(buttonText),
-                    ),
-                  ),
-                ],
+    final width = MediaQuery.sizeOf(context).width;
+    final cardWidth = width * .74;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text('تمرین‌ها و آزمون‌ها',
+                style: TextStyle(color: _ink, fontSize: 19, fontWeight: FontWeight.w900, fontFamily: 'Estedad')),
+            ),
+            FilledButton(
+              onPressed: () {},
+              style: FilledButton.styleFrom(
+                backgroundColor: _softMint, foregroundColor: _mintDeep,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                minimumSize: const Size(0, 34), shape: const StadiumBorder(),
+              ),
+              child: const Text('همه', style: TextStyle(fontFamily: 'Estedad', fontSize: 12, fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text('فعالیت‌ها را بر اساس نوع و مهارت انتخاب کن',
+          style: TextStyle(color: _muted, fontSize: 12, fontFamily: 'Estedad')),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(color: _boxBg, border: Border.all(color: _line), borderRadius: BorderRadius.circular(16)),
+          child: Row(children: [
+            Expanded(child: _tab('آزمون‌ها', 0)),
+            Expanded(child: _tab('تکالیف و تمرین‌ها', 1)),
+          ]),
+        ),
+        const SizedBox(height: 15),
+        SizedBox(
+          height: 164,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.only(left: 2, right: 2),
+            itemCount: _skills.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, i) => SizedBox(
+              width: cardWidth,
+              child: _SkillCard(
+                skill: _skills[i], icon: _icons[i], isExam: _selected == 0,
               ),
             ),
           ),
-          SizedBox(
-            width: width * .36,
-            height: double.infinity,
-            child: isVocabulary
-                ? const Center(
-                    child: Icon(
-                      Icons.auto_stories_rounded,
-                      color: _mintDeep,
-                      size: 78,
-                    ),
-                  )
-                : imageAsset != null
-                    ? Image.asset(
-                        imageAsset!,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomCenter,
-                        errorBuilder: (_, __, ___) => Icon(
-                          fallbackIcon,
-                          color: _mintDeep,
-                          size: 78,
-                        ),
-                      )
-                    : Center(
-                        child: Icon(
-                          fallbackIcon,
-                          color: _mintDeep,
-                          size: 78,
-                        ),
-                      ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
+  Widget _tab(String label, int index) => GestureDetector(
+    onTap: () => setState(() => _selected = index),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+      decoration: BoxDecoration(
+        color: _selected == index ? _mintDeep : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(label, textAlign: TextAlign.center,
+        style: TextStyle(fontFamily: 'Estedad', fontSize: 12,
+          fontWeight: FontWeight.w800, color: _selected == index ? Colors.white : _muted)),
+    ),
+  );
+}
+
+class _SkillCard extends StatelessWidget {
+  final String skill;
+  final IconData icon;
+  final bool isExam;
+  const _SkillCard({required this.skill, required this.icon, required this.isExam});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    clipBehavior: Clip.antiAlias,
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: _boxBg, borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: _line),
+    ),
+    child: Row(children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: _softMint, borderRadius: BorderRadius.circular(10)),
+              child: Text(isExam ? 'آزمون مهارتی' : 'تمرین مهارتی',
+                style: const TextStyle(fontFamily: 'Estedad', fontSize: 11, color: _mintDeep, fontWeight: FontWeight.w800)),
+            ),
+            Text(skill, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: 'Estedad', fontSize: 20, color: _ink, fontWeight: FontWeight.w900)),
+            FilledButton(
+              onPressed: () {},
+              style: FilledButton.styleFrom(backgroundColor: _mintDeep, foregroundColor: Colors.white,
+                minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 18),
+                shape: const StadiumBorder()),
+              child: Text(isExam ? 'شروع آزمون' : 'شروع تمرین',
+                style: const TextStyle(fontFamily: 'Estedad', fontSize: 12, fontWeight: FontWeight.w800)),
+            ),
+          ]),
+      ),
+      const SizedBox(width: 12),
+      Container(width: 82, height: 82, decoration: BoxDecoration(color: _softMint, borderRadius: BorderRadius.circular(20)),
+        child: Icon(icon, color: _mintDeep, size: 44)),
+    ]),
+  );
 }
 
 // ─── Kept for compatibility with the existing app ──────────────────────

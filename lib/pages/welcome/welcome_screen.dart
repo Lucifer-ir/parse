@@ -13,13 +13,11 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ══ بک‌گراند بیرون کانتینر — خاکستری ملایم ══
       backgroundColor: const Color(0xFFEFF3F1),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: SafeArea(
           child: Center(
-            // ══ کانتینر موبایل — حداکثر عرض ۴۸۰ پیکسل ══
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: ClipRRect(
@@ -29,7 +27,6 @@ class WelcomeScreen extends StatelessWidget {
                   child: Stack(
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      // ── Background decorations (داخل کانتینر) ──
                       Positioned(
                         top: -80,
                         left: -80,
@@ -42,6 +39,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+
                       Positioned(
                         bottom: -60,
                         right: -60,
@@ -55,10 +53,8 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // ── Main layout ──
                       Column(
                         children: [
-                          // ───── Logo: Top ─────
                           Padding(
                             padding: const EdgeInsets.only(top: 20),
                             child: Center(
@@ -86,7 +82,6 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           ),
 
-                          // ───── Character and Text: Center ─────
                           Expanded(
                             child: Center(
                               child: SingleChildScrollView(
@@ -99,7 +94,6 @@ class WelcomeScreen extends StatelessWidget {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    // Character
                                     Center(
                                       child: Image.asset(
                                         'assets/images/character.webp',
@@ -128,7 +122,6 @@ class WelcomeScreen extends StatelessWidget {
 
                                     const SizedBox(height: 24),
 
-                                    // Title
                                     const Text(
                                       'یادگیری زبان را از این‌جا شروع کنید',
                                       textAlign: TextAlign.center,
@@ -142,7 +135,6 @@ class WelcomeScreen extends StatelessWidget {
 
                                     const SizedBox(height: 8),
 
-                                    // Subtitle
                                     const Text(
                                       'کلاس‌های انگلیسی، آلمانی و فرانسوی با بهترین اساتید',
                                       textAlign: TextAlign.center,
@@ -158,7 +150,6 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           ),
 
-                          // ───── Buttons: Bottom ─────
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
                               28,
@@ -171,7 +162,7 @@ class WelcomeScreen extends StatelessWidget {
                                   CrossAxisAlignment.stretch,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Register
+                                // Register button
                                 FilledButton(
                                   onPressed: () {
                                     Navigator.pushNamed(
@@ -189,17 +180,20 @@ class WelcomeScreen extends StatelessWidget {
                                       borderRadius:
                                           BorderRadius.circular(20),
                                     ),
-                                    textStyle: const TextStyle(
+                                  ),
+                                  child: const Text(
+                                    'شروع یادگیری',
+                                    style: TextStyle(
+                                      fontFamily: 'Estedad',
                                       fontSize: 17,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  child: const Text('شروع یادگیری'),
                                 ),
 
                                 const SizedBox(height: 12),
 
-                                // Login
+                                // Login button
                                 OutlinedButton(
                                   onPressed: () {
                                     Navigator.pushNamed(
@@ -218,19 +212,19 @@ class WelcomeScreen extends StatelessWidget {
                                       borderRadius:
                                           BorderRadius.circular(20),
                                     ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
                                   ),
                                   child: const Text(
                                     'ورود به حساب کاربری',
+                                    style: TextStyle(
+                                      fontFamily: 'Estedad',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
 
                                 const SizedBox(height: 18),
 
-                                // Terms
                                 const Text(
                                   'با ادامه، قوانین و شرایط استفاده از پارسه را می‌پذیرم.',
                                   textAlign: TextAlign.center,
