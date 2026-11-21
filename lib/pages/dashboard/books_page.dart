@@ -1,8 +1,5 @@
 import 'dart:io';
-import 'dart:convert';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
@@ -32,7 +29,29 @@ class _BooksPageState extends State<BooksPage>{
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('دریافت ناموفق: $e')));}
     finally{if(mounted)setState(()=>_downloads.remove(b.id));}
   }
-  void _open(_Book b){final path=_paths[b.id];if(path==null||!File(path).existsSync()){_download(b);return;}Navigator.push(context,MaterialPageRoute(builder:(_)=>_PdfReader(book:b,path:path,progress:_progress[b.id]??0,onProgress:(p)async{_progress[b.id]=p;final prefs=await SharedPreferences.getInstance();await prefs.setDouble('progress_${b.id}',p);if(mounted)setState((){});}));}
+  void _open(_Book b) {
+    final path = _paths[b.id];
+    if (path == null || !File(path).existsSync()) {
+      _download(b);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _PdfReader(
+          book: b,
+          path: path,
+          progress: _progress[b.id] ?? 0,
+          onProgress: (p) async {
+            _progress[b.id] = p;
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setDouble('progress_${b.id}', p);
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
+  }
   @override void dispose(){_search.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(backgroundColor:const Color(0xFFF7FAF8),body:SafeArea(child:ListView(padding:const EdgeInsets.fromLTRB(16,18,16,28),children:[
     Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('کتاب‌ها',style:TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:5),const Text('کتاب‌های واقعی PDF، ذخیره‌شده داخل برنامه',style:TextStyle(color:_muted,fontSize:12))])),IconButton(onPressed:()=>setState(()=>_searching=!_searching),icon:Icon(_searching?Icons.close:Icons.search),style:IconButton.styleFrom(backgroundColor:Colors.white))]),
@@ -54,14 +73,202 @@ const _catalog=[
 class _BookTile extends StatelessWidget{final _Book book;final String? path;final double progress;final double? download;final VoidCallback onDownload,onOpen;const _BookTile({required this.book,this.path,required this.progress,this.download,required this.onDownload,required this.onOpen});
 @override Widget build(BuildContext context){final saved=path!=null;return Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(children:[Row(children:[Container(width:48,height:58,decoration:BoxDecoration(color:book.color.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Icon(Icons.picture_as_pdf,color:book.color,size:26)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(book.title,style:const TextStyle(color:_ink,fontWeight:FontWeight.w800,fontSize:13)),const SizedBox(height:4),Text(saved?'ذخیره‌شده در برنامه':'برای مطالعه ابتدا دریافت کن',style:const TextStyle(color:_muted,fontSize:10)),if(saved)...[const SizedBox(height:8),LinearProgressIndicator(value:progress,color:book.color,backgroundColor:_line,minHeight:5)]])),if(download!=null)Text('${(download!*100).round()}٪',style:TextStyle(color:book.color,fontWeight:FontWeight.bold))else Icon(saved?Icons.check_circle:Icons.download_rounded,color:saved?Colors.green:book.color)]),if(download!=null)...[const SizedBox(height:10),LinearProgressIndicator(value:download,color:book.color)],const SizedBox(height:12),Row(children:[if(saved)Expanded(child:FilledButton.icon(onPressed:onOpen,icon:const Icon(Icons.menu_book_rounded),label:const Text('مطالعه'))),if(saved)const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:download==null?onDownload:null,icon:Icon(saved?Icons.download_done:Icons.download_rounded),label:Text(saved?'دریافت مجدد':'دانلود داخل برنامه')))])]));}}
 
-class _PdfReader extends StatefulWidget{final _Book book;final String path;final double progress;final ValueChanged<double> onProgress;const _PdfReader({required this.book,required this.path,required this.progress,required this.onProgress});@override State<_PdfReader> createState()=>_PdfReaderState();}
-class _PdfReaderState extends State<_PdfReader>{
-late PdfControllerPinch _controller;late int _page;int _pages=0;bool _night=false,_pen=false,_highlight=false;final List<List<Offset>> _strokes=[];final List<Offset> _current=[];final TextEditingController _note=TextEditingController();final FocusNode _noteFocus=FocusNode();
-@override void initState(){super.initState();_page=0;_controller=PdfControllerPinch(document:PdfDocument.openFile(widget.path));}
-void _pageChanged(int p){setState(()=>_page=p);if(_pages>0)widget.onProgress((p+1)/_pages);_loadNote(p);}
-Future<void> _loadNote(int page)async{final prefs=await SharedPreferences.getInstance();final value=prefs.getString('note_${widget.book.id}_$page')??'';if(mounted){_note.text=value;}}
-@override void dispose(){_controller.dispose();_note.dispose();_noteFocus.dispose();super.dispose();}
-@override Widget build(BuildContext context){final fg=_night?Colors.white: _ink;final bg=_night?const Color(0xFF101820):const Color(0xFFF3F3F0);return Scaffold(backgroundColor:bg,appBar:AppBar(backgroundColor:bg,foregroundColor:fg,title:Text(widget.book.title,style:const TextStyle(fontSize:14)),actions:[IconButton(tooltip:'قلم',onPressed:()=>setState(()=>_pen=!_pen),icon:Icon(Icons.draw,color:_pen?_mint:null)),IconButton(tooltip:'هایلایت',onPressed:()=>setState(()=>_highlight=!_highlight),icon:Icon(Icons.highlight,color:_highlight?_mint:null)),IconButton(tooltip:'پاک کردن علامت‌ها',onPressed:()=>setState(()=>_strokes.clear()),icon:const Icon(Icons.delete_outline)),IconButton(tooltip:'شب',onPressed:()=>setState(()=>_night=!_night),icon:Icon(_night?Icons.light_mode:Icons.dark_mode))]),body:Column(children:[Expanded(child:Stack(children:[PdfViewPinch(controller:_controller,onDocumentLoaded:(d){setState(()=>_pages=d.pagesCount);final target=(widget.progress*d.pagesCount).floor().clamp(0,d.pagesCount-1);if(target>0)_controller.goToPage(pageNumber:target+1);},onPageChanged:(p)=>_pageChanged(p-1)),if(_pen||_highlight)Positioned.fill(child:GestureDetector(behavior:HitTestBehavior.translucent,onPanStart:(d){_current.clear();_current.add(d.localPosition);setState((){});},onPanUpdate:(d){_current.add(d.localPosition);setState((){});},onPanEnd:(_){_strokes.add(List.of(_current));_current.clear();setState((){});},child:CustomPaint(painter:_StrokePainter([..._strokes,_current],highlight:_highlight)))),if(_night)Positioned.fill(child:IgnorePointer(child:Container(color:Colors.black.withValues(alpha:.28))))])),Container(color:_night?const Color(0xFF1B2630):Colors.white,padding:const EdgeInsets.fromLTRB(12,8,12,6),child:Column(children:[Row(children:[IconButton(onPressed:_page>0?()=>_controller.goToPage(pageNumber:_page):null,icon:const Icon(Icons.chevron_right)),Expanded(child:Text('صفحه ${_page+1}${_pages>0?' از $_pages':''}',textAlign:TextAlign.center,style:TextStyle(color:fg,fontSize:12))),IconButton(onPressed:_pages>0&&_page+1<_pages?()=>_controller.goToPage(pageNumber:_page+2):null,icon:const Icon(Icons.chevron_left))]),if(_pages>0)LinearProgressIndicator(value:(_page+1)/_pages,color:_mint,backgroundColor:_line)])),Container(color:_night?const Color(0xFF1B2630):Colors.white,padding:const EdgeInsets.fromLTRB(12,8,12,12),child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[Expanded(child:TextField(controller:_note,focusNode:_noteFocus,minLines:1,maxLines:4,style:TextStyle(color:fg,fontSize:13),decoration:InputDecoration(hintText:'یادداشت این صفحه...',hintStyle:TextStyle(color:fg.withValues(alpha:.55)),filled:true,fillColor:bg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),borderSide:BorderSide.none),contentPadding:const EdgeInsets.all(12)))),IconButton(onPressed:()=>_saveNote(),icon:const Icon(Icons.save_outlined,color:_mint))]))]));}
-Future<void> _saveNote()async{final prefs=await SharedPreferences.getInstance();await prefs.setString('note_${widget.book.id}_$_page',_note.text);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('یادداشت این صفحه ذخیره شد')));}
+class _PdfReader extends StatefulWidget {
+  final _Book book;
+  final String path;
+  final double progress;
+  final ValueChanged<double> onProgress;
+  const _PdfReader({required this.book, required this.path, required this.progress, required this.onProgress});
+  @override State<_PdfReader> createState() => _PdfReaderState();
 }
-class _StrokePainter extends CustomPainter{final List<List<Offset>> strokes;final bool highlight;const _StrokePainter(this.strokes,{required this.highlight});@override void paint(Canvas c,Size s){final p=Paint()..color=highlight?const Color(0x66FFE66D):const Color(0xFF08CDBB)..strokeWidth=highlight?18:3..strokeCap=StrokeCap.round..style=PaintingStyle.stroke;for(final stroke in strokes){if(stroke.length<2)continue;final path=Path()..moveTo(stroke.first.dx,stroke.first.dy);for(final point in stroke.skip(1))path.lineTo(point.dx,point.dy);c.drawPath(path,p);}}@override bool shouldRepaint(covariant _StrokePainter old)=>true;}
+
+class _PdfReaderState extends State<_PdfReader> {
+  late PdfControllerPinch _controller;
+  int _page = 0;
+  int _pages = 0;
+  bool _night = false, _pen = false, _highlight = false;
+  final List<List<Offset>> _strokes = [];
+  final List<Offset> _current = [];
+  final TextEditingController _note = TextEditingController();
+  final FocusNode _noteFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    final initialPage = widget.progress > 0 ? 1 : 1;
+    _controller = PdfControllerPinch(document: PdfDocument.openFile(widget.path), initialPage: initialPage);
+  }
+
+  void _pageChanged(int pageNumber) {
+    final zeroBased = (pageNumber - 1).clamp(0, _pages > 0 ? _pages - 1 : 0);
+    if (!mounted) return;
+    setState(() => _page = zeroBased);
+    if (_pages > 0) widget.onProgress((zeroBased + 1) / _pages);
+    _loadNote(zeroBased);
+  }
+
+  Future<void> _loadNote(int page) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString('note_${widget.book.id}_$page') ?? '';
+    if (mounted) _note.text = value;
+  }
+
+  Future<void> _restoreProgress(int pagesCount) async {
+    if (pagesCount <= 0 || widget.progress <= 0) return;
+    final target = (widget.progress * pagesCount).floor().clamp(1, pagesCount);
+    if (target > 1) {
+      await _controller.animateToPage(
+        pageNumber: target,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  Future<void> _previousPage() async {
+    if (_page <= 0) return;
+    await _controller.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeInOut);
+  }
+
+  Future<void> _nextPage() async {
+    if (_pages == 0 || _page + 1 >= _pages) return;
+    await _controller.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _note.dispose();
+    _noteFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = _night ? Colors.white : _ink;
+    final bg = _night ? const Color(0xFF101820) : const Color(0xFFF3F3F0);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: bg,
+        appBar: AppBar(
+          backgroundColor: bg,
+          foregroundColor: fg,
+          title: Text(widget.book.title, style: const TextStyle(fontSize: 14)),
+          actions: [
+            IconButton(tooltip: 'قلم', onPressed: () => setState(() { _pen = !_pen; _highlight = false; }), icon: Icon(Icons.draw, color: _pen ? _mint : null)),
+            IconButton(tooltip: 'هایلایت', onPressed: () => setState(() { _highlight = !_highlight; _pen = false; }), icon: Icon(Icons.highlight, color: _highlight ? _mint : null)),
+            IconButton(tooltip: 'پاک کردن علامت‌ها', onPressed: () => setState(() { _strokes.clear(); _current.clear(); }), icon: const Icon(Icons.delete_outline)),
+            IconButton(tooltip: 'شب', onPressed: () => setState(() => _night = !_night), icon: Icon(_night ? Icons.light_mode : Icons.dark_mode)),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  PdfViewPinch(
+                    controller: _controller,
+                    onDocumentLoaded: (document) {
+                      if (!mounted) return;
+                      setState(() => _pages = document.pagesCount);
+                      _restoreProgress(document.pagesCount);
+                    },
+                    onPageChanged: _pageChanged,
+                  ),
+                  if (_pen || _highlight)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onPanStart: (d) { _current.clear(); _current.add(d.localPosition); setState(() {}); },
+                        onPanUpdate: (d) { _current.add(d.localPosition); setState(() {}); },
+                        onPanEnd: (_) { if (_current.length > 1) _strokes.add(List.of(_current)); _current.clear(); setState(() {}); },
+                        child: CustomPaint(painter: _StrokePainter([..._strokes, _current], highlight: _highlight)),
+                      ),
+                    ),
+                  if (_night)
+                    Positioned.fill(child: IgnorePointer(child: Container(color: Colors.black.withValues(alpha: .28)))),
+                ],
+              ),
+            ),
+            Container(
+              color: _night ? const Color(0xFF1B2630) : Colors.white,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(onPressed: _page > 0 ? _previousPage : null, icon: const Icon(Icons.chevron_right)),
+                      Expanded(child: Text('صفحه ${_page + 1}${_pages > 0 ? ' از $_pages' : ''}', textAlign: TextAlign.center, style: TextStyle(color: fg, fontSize: 12))),
+                      IconButton(onPressed: _pages > 0 && _page + 1 < _pages ? _nextPage : null, icon: const Icon(Icons.chevron_left)),
+                    ],
+                  ),
+                  if (_pages > 0) LinearProgressIndicator(value: ((_page + 1) / _pages).clamp(0.0, 1.0), color: _mint, backgroundColor: _line),
+                ],
+              ),
+            ),
+            Container(
+              color: _night ? const Color(0xFF1B2630) : Colors.white,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _note,
+                      focusNode: _noteFocus,
+                      minLines: 1,
+                      maxLines: 4,
+                      style: TextStyle(color: fg, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'یادداشت این صفحه...',
+                        hintStyle: TextStyle(color: fg.withValues(alpha: .55)),
+                        filled: true,
+                        fillColor: bg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ),
+                  IconButton(onPressed: _saveNote, icon: const Icon(Icons.save_outlined, color: _mint)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveNote() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('note_${widget.book.id}_$_page', _note.text);
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('یادداشت این صفحه ذخیره شد')));
+  }
+}
+
+class _StrokePainter extends CustomPainter {
+  final List<List<Offset>> strokes;
+  final bool highlight;
+  const _StrokePainter(this.strokes, {required this.highlight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = highlight ? const Color(0x66FFE66D) : const Color(0xFF08CDBB)
+      ..strokeWidth = highlight ? 18 : 3
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (final stroke in strokes) {
+      if (stroke.length < 2) continue;
+      final path = Path()..moveTo(stroke.first.dx, stroke.first.dy);
+      for (final point in stroke.skip(1)) {
+        path.lineTo(point.dx, point.dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StrokePainter oldDelegate) => true;
+}
