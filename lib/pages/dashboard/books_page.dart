@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -13,21 +14,88 @@ class _BooksPageState extends State<BooksPage>{
   @override void initState(){super.initState();_loadLocal();}
   Future<void> _loadLocal() async {final prefs=await SharedPreferences.getInstance(); for(final b in _books){final path=prefs.getString('book_${b.id}');if(path!=null&&File(path).existsSync())_paths[b.id]=path;_progress[b.id]=prefs.getDouble('progress_${b.id}')??0;} if(mounted)setState((){});}
   List<_Book> get _filtered{final q=_search.text.trim().toLowerCase();return q.isEmpty?_books:_books.where((b)=>b.title.toLowerCase().contains(q)).toList();}
-  Future<void> _download(_Book b) async{
-    if(_downloads.containsKey(b.id))return;
-    setState(()=>_downloads[b.id]=0);
-    try{
-      final req=await http.Client().send(http.Request('GET',Uri.parse(b.url)));
-      if(req.statusCode<200||req.statusCode>=300)throw Exception('HTTP ${req.statusCode}');
-      final total=req.contentLength??0;final dir=await getApplicationDocumentsDirectory();final file=File('${dir.path}/${b.id}.pdf');final sink=file.openWrite();int received=0;
-      await for(final chunk in req.stream){sink.add(chunk);received+=chunk.length;if(mounted)setState(()=>_downloads[b.id]=total>0?received/total:0);}
-      await sink.flush();await sink.close();
-      if(await file.length()<1000)throw Exception('فایل دریافت‌شده معتبر نیست');
-      final prefs=await SharedPreferences.getInstance();await prefs.setString('book_${b.id}',file.path);
-      if(mounted)setState(()=>_paths[b.id]=file.path);
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${b.title} در حافظه برنامه ذخیره شد.')));
-    }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('دریافت ناموفق: $e')));}
-    finally{if(mounted)setState(()=>_downloads.remove(b.id));}
+  Future<void> _download(_Book b) async {
+    if (_downloads.containsKey(b.id)) return;
+    setState(() => _downloads[b.id] = 0);
+
+    final client = http.Client();
+    File? tempFile;
+    IOSink? sink;
+    try {
+      // درخواست مستقیماً با URL دامنه انجام می‌شود؛ هیچ IP ثابتی استفاده نمی‌شود.
+      final uri = Uri.parse(b.url);
+      if (!uri.hasScheme || uri.host.isEmpty) throw Exception('آدرس دانلود نامعتبر است');
+
+      http.StreamedResponse? response;
+      Object? lastError;
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          final request = http.Request('GET', uri)
+            ..followRedirects = true
+            ..headers.addAll({
+              'Accept': 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.8',
+              'User-Agent': 'Parseh Flutter App',
+              'Connection': 'keep-alive',
+            });
+          response = await client.send(request).timeout(const Duration(seconds: 45));
+          if (response.statusCode >= 200 && response.statusCode < 300) break;
+          throw HttpException('HTTP ${response.statusCode}', uri: uri);
+        } catch (e) {
+          lastError = e;
+          if (attempt == 3) rethrow;
+          await Future.delayed(Duration(milliseconds: 700 * attempt));
+        }
+      }
+      if (response == null || response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('دریافت فایل از سرور انجام نشد${lastError != null ? ': $lastError' : ''}');
+      }
+
+      final total = response.contentLength ?? 0;
+      final dir = await getApplicationDocumentsDirectory();
+      tempFile = File('${dir.path}/${b.id}.pdf.part');
+      sink = tempFile.openWrite();
+      int received = 0;
+      final firstBytes = <int>[];
+      await for (final chunk in response.stream.timeout(const Duration(seconds: 45))) {
+        if (firstBytes.length < 5) firstBytes.addAll(chunk.take(5 - firstBytes.length));
+        sink.add(chunk);
+        received += chunk.length;
+        if (mounted) setState(() => _downloads[b.id] = total > 0 ? (received / total).clamp(0.0, 1.0) : 0);
+      }
+      await sink.flush();
+      await sink.close();
+      sink = null;
+
+      if (firstBytes.length < 4 || String.fromCharCodes(firstBytes.take(4)) != '%PDF') {
+        throw Exception('پاسخ سرور فایل PDF معتبر نیست');
+      }
+
+      final file = File('${dir.path}/${b.id}.pdf');
+      if (await file.exists()) await file.delete();
+      await tempFile.rename(file.path);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('book_${b.id}', file.path);
+      if (mounted) {
+        setState(() => _paths[b.id] = file.path);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${b.title} در برنامه ذخیره شد.')));
+      }
+    } catch (e) {
+      if (sink != null) {
+        try { await sink.close(); } catch (_) {}
+      }
+      if (tempFile != null && await tempFile.exists()) {
+        try { await tempFile.delete(); } catch (_) {}
+      }
+      final message = e is SocketException
+          ? 'اتصال به دامنه برقرار نشد. اینترنت یا DNS را بررسی کن.'
+          : e is TimeoutException
+              ? 'زمان دریافت فایل تمام شد. دوباره تلاش کن.'
+              : 'دریافت ناموفق: $e';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      client.close();
+      if (mounted) setState(() => _downloads.remove(b.id));
+    }
   }
   void _open(_Book b) {
     final path = _paths[b.id];
