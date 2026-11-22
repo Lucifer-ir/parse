@@ -103,3 +103,16 @@ async def generate(data:Generate,uid:int=Depends(auth)):
 @app.get("/questions")
 def questions(uid:int=Depends(auth)):
  c=db();rows=c.execute("SELECT id,source_id,question,answer,level,kind FROM questions WHERE owner_id=? ORDER BY id DESC",(uid,)).fetchall();c.close();return [dict(r) for r in rows]
+
+def admin_auth(uid:int=Depends(auth)):
+ c=db();r=c.execute("SELECT role FROM users WHERE id=?",(uid,)).fetchone();c.close()
+ if not r or r["role"]!="admin":raise HTTPException(403,"Admin access required")
+ return uid
+@app.get("/admin/stats")
+def admin_stats(uid:int=Depends(admin_auth)):
+ c=db()
+ users=c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+ sources=c.execute("SELECT COUNT(*) FROM sources").fetchone()[0]
+ questions=c.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+ c.close()
+ return {"users":users,"sources":sources,"questions":questions}
