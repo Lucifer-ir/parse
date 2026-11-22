@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/app_routes.dart';
+import '../../core/api_client.dart';
 
 // اگر این صفحه توی همون main.dart است، این ثابت‌ها رو تکراری تعریف نکن
 const Color kGreen = Color(0xFF00A37A);
@@ -109,15 +110,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-    // TODO: اتصال به API واقعی
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    setState(() => _loading = false);
-
-    _showInContainerSnack('ورود موفق! به پارسه خوش آمدی 👋');
-    Future<void>.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
-    });
+    try {
+      final result = await ParseApi.post('auth/login', {'username': _username.text.trim(), 'password': _password.text});
+      final token = result['token']?.toString();
+      if (token == null || token.isEmpty) throw ApiException('پاسخ ورود سرور نامعتبر است');
+      await ParseApi.saveToken(token);
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showInContainerSnack('ورود موفق! به پارسه خوش آمدی 👋');
+      Future<void>.delayed(const Duration(milliseconds: 500), () { if (mounted) Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard); });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showInContainerSnack(e is ApiException ? e.message : 'ورود ناموفق بود');
+    }
   }
 
   // ── UI ──────────────────────────────────────────────────
