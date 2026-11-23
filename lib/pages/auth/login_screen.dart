@@ -38,15 +38,12 @@ class _LoginScreenState extends State<LoginScreen> {
   // ── اعتبارسنجی ──────────────────────────────────────────
   String? _validateUsername(String? value) {
     final v = value?.trim() ?? '';
-    if (v.isEmpty) return 'این فیلد الزامی است';
-    final hasDigits = v.contains(RegExp(r'\d'));
-    final isPhone = RegExp(r'^09\d{9}$').hasMatch(v);
-    if (hasDigits && !isPhone) {
-      return 'شماره موبایل معتبر نیست (مثال: 09123456789)';
-    }
+    if (v.isEmpty) return 'نام کاربری یا شماره موبایل را وارد کن';
+    if (v.length > 100) return 'طول نام کاربری معتبر نیست';
+    // Student usernames may contain digits (for example: armin2367).
+    // The API accepts either the exact username or phone number.
     return null;
   }
-
   String? _validatePassword(String? value) {
     final v = value ?? '';
     if (v.isEmpty) return 'رمز عبور را وارد کن';
