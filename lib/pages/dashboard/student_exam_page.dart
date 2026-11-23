@@ -14,6 +14,8 @@ class StudentExamPage extends StatefulWidget {
 class _StudentExamPageState extends State<StudentExamPage> {
   final Map<int, dynamic> _answers = {};
   final Map<int, TextEditingController> _textControllers = {};
+  final Map<int, Timer> _saveTimers = {};
+  final Map<int, bool> _saving = {};
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -47,6 +49,13 @@ class _StudentExamPageState extends State<StudentExamPage> {
       if (rows.isEmpty) throw ApiException('این آزمون هنوز سؤال منتشرشده ندارد.');
       final started = await ParseApi.post('exams/${widget.examId}/start', {});
       final attempt = Map<String, dynamic>.from(started['attempt'] as Map);
+      final saved = started['answers'];
+      if (saved is Map) {
+        for (final entry in saved.entries) {
+          final id = int.tryParse(entry.key.toString());
+          if (id != null) _answers[id] = entry.value;
+        }
+      }
       _expiresAt = _parseUtc(attempt['expires_at']);
       if (_expiresAt == null) throw ApiException('زمان پایان آزمون از سرور دریافت نشد.');
       if (!mounted) return;
@@ -61,6 +70,48 @@ class _StudentExamPageState extends State<StudentExamPage> {
         _loading = false;
         _error = error.toString();
       });
+    }
+  }
+
+
+  void _scheduleSave(int questionId) {
+    _saveTimers[questionId]?.cancel();
+    _saveTimers[questionId] = Timer(const Duration(milliseconds: 450), () {
+      _saveQuestion(questionId);
+    });
+  }
+
+  Future<void> _saveQuestion(int questionId) async {
+    if (!_answers.containsKey(questionId) || _answers[questionId] == null) return;
+    if (_saving[questionId] == true) {
+      _scheduleSave(questionId);
+      return;
+    }
+    _saving[questionId] = true;
+    try {
+      await ParseApi.post('exams/' + widget.examId.toString() + '/answers', {
+        'question_id': questionId,
+        'answer': _answers[questionId],
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ذخیره خودکار پاسخ انجام نشد: ' + error.toString())),
+        );
+      }
+      rethrow;
+    } finally {
+      _saving[questionId] = false;
+    }
+  }
+
+  Future<void> _flushAnswers() async {
+    for (final timer in _saveTimers.values) {
+      timer.cancel();
+    }
+    _saveTimers.clear();
+    for (final questionId in _answers.keys.toList()) {
+      await _saveQuestion(questionId);
     }
   }
 
@@ -136,7 +187,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
             activeColor: const Color(0xFF168F89),
             contentPadding: EdgeInsets.zero,
             title: Text('$value  ${_optionText(entry.value)}', textDirection: TextDirection.rtl),
-            onChanged: (next) => setState(() => _answers[id] = next),
+            onChanged: (next) { setState(() => _answers[id] = next); _scheduleSave(id); },
           );
         }).toList(),
       );
@@ -150,7 +201,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
       minLines: type == 'written' || type == 'speaking' ? 4 : 2,
       maxLines: 8,
       textDirection: TextDirection.rtl,
-      onChanged: (value) => _answers[id] = value,
+      onChanged: (value) { _answers[id] = value; _scheduleSave(id); },
       decoration: InputDecoration(
         hintText: type == 'speaking'
             ? 'پاسخ گفتاری را ثبت کنید. در نسخه فعلی پاسخ متنی دریافت می‌شود.'
@@ -181,15 +232,8 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
     setState(() => _submitting = true);
     try {
-      for (final question in _questions) {
-        final id = int.parse(question['id'].toString());
-        if (!_answers.containsKey(id) || _answers[id] == null) continue;
-        await ParseApi.post('exams/${widget.examId}/answers', {
-          'question_id': id,
-          'answer': _answers[id],
-        });
-      }
-      final response = await ParseApi.post('exams/${widget.examId}/submit', {});
+      if (!autoSubmit) await _flushAnswers();
+      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
       _timer?.cancel();
       if (!mounted) return;
       setState(() {
@@ -207,6 +251,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    for (final timer in _saveTimers.values) { timer.cancel(); }
     for (final controller in _textControllers.values) {
       controller.dispose();
     }
