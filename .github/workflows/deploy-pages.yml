@@ -1,7 +1,7 @@
 name: Deploy Flutter Web to GitHub Pages
 on:
   push:
-    branches: [feat/parse-platform-backend]
+    branches: [main, feat/parse-platform-backend]
   workflow_dispatch:
 permissions:
   contents: read
