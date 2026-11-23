@@ -22,7 +22,7 @@ class _BooksPageState extends State<BooksPage>{
         final id=(row['id']??'').toString();
         final fileUrl=(row['file_url']??'').toString();
         final url=fileUrl.startsWith('http')?fileUrl:ParseApi.uri('resources/$id/download').toString();
-        return _Book(id,(row['title']??'').toString(),(row['description']??'').toString(),url,colors[int.tryParse(id)??0 % colors.length]);
+        return _Book(id,(row['title']??'').toString(),(row['description']??'').toString(),url,colors[(int.tryParse(id) ?? 0) % colors.length]);
       }).toList();
       await _loadLocal();
     } catch(error) {
