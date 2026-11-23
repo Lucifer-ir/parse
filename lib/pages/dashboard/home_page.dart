@@ -48,36 +48,15 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _GreetingBanner extends StatelessWidget {
+class _GreetingBanner extends StatefulWidget {
   const _GreetingBanner();
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
-        decoration:
-            BoxDecoration(color: _ink, borderRadius: BorderRadius.circular(22)),
-        child: Row(children: [
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                Text('سلام، آماده‌ای امیر جان؟',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900)),
-                SizedBox(height: 5),
-                Text('تایم آزمون و تمرین‌های امروزت رو مدیریت کن.',
-                    style: TextStyle(color: Color(0xFFBBD7D0), fontSize: 11))
-              ])),
-          Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                  color: _mint.withValues(alpha: .2), shape: BoxShape.circle),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  color: _mint, size: 23)),
-        ]),
-      );
+  @override State<_GreetingBanner> createState()=>_GreetingBannerState();
+}
+class _GreetingBannerState extends State<_GreetingBanner>{
+  String _name='دانش‌آموز';
+  @override void initState(){super.initState();_load();}
+  Future<void> _load()async{try{final data=await ParseApi.get('auth/me');final user=data['user'];final name=(user is Map?(user['name']??user['username']):null)?.toString();if(name!=null&&name.trim().isNotEmpty&&mounted)setState(()=>_name=name);}catch(_) {}}
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.fromLTRB(16,15,16,15),decoration:BoxDecoration(color:_ink,borderRadius:BorderRadius.circular(22)),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('سلام، $_name!',style:const TextStyle(color:Colors.white,fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:5),const Text('مسیر یادگیری و فعالیت‌های آموزشی تو.',style:TextStyle(color:Color(0xFFBBD7D0),fontSize:11))])),Container(width:42,height:42,decoration:BoxDecoration(color:_mint.withValues(alpha:.2),shape:BoxShape.circle),child:const Icon(Icons.auto_awesome_rounded,color:_mint,size:23))]));
 }
 
 class _WeeklyStats extends StatefulWidget {
