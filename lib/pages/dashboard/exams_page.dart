@@ -139,7 +139,7 @@ class _ExamsPageState extends State<ExamsPage> {
           level: (row['level'] ?? '—').toString(),
           duration: '$duration دقیقه',
           questions: '$count سؤال',
-          status: 'آماده شروع',
+          status: (row['attempt_status'] ?? '') == 'in_progress' ? 'تکمیل نشده' : ((row['attempt_status'] ?? '') != '' ? 'انجام شده' : 'آماده شروع'),
           color: colors[id % colors.length],
         );
       }).where((item) => item.id != null && item.id! > 0).toList();
@@ -160,7 +160,7 @@ class _ExamsPageState extends State<ExamsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = filter == 0 ? _exams : _exams;
+    final visible = filter == 0 ? _exams : filter == 1 ? _exams.where((e) => e.status != 'تکمیل نشده').toList() : _exams.where((e) => e.status == 'تکمیل نشده').toList();
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -220,6 +220,9 @@ class _ExamsPageState extends State<ExamsPage> {
                         const SizedBox(height: 22),
                         _FilterRow(
                           selected: filter,
+                          allCount: _exams.length,
+                          availableCount: _exams.where((e) => e.status != 'تکمیل نشده').length,
+                          incompleteCount: _exams.where((e) => e.status == 'تکمیل نشده').length,
                           onChanged: (v) => setState(() => filter = v),
                         ),
                         const SizedBox(height: 6),
@@ -272,7 +275,7 @@ class _ExamsPageState extends State<ExamsPage> {
                 else if (_error != null)
                   SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center)))
                 else if (visible.isEmpty)
-                  const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(24), child: Text('فعلاً آزمون منتشرشده‌ای برای حساب شما وجود ندارد.', textAlign: TextAlign.center, style: TextStyle(color: ExamColors.textGray))))
+                  const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(24), child: Text('فعلاً آزمون منتشرشده‌ای برای حساب شما وجود ندارد.', textAlign: TextAlign.center, style: TextStyle(color: ExamColors.textGray)))),
                 // Exam cards
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
@@ -414,8 +417,11 @@ class _SummaryValue extends StatelessWidget {
 
 class _FilterRow extends StatelessWidget {
   final int selected;
+  final int allCount;
+  final int availableCount;
+  final int incompleteCount;
   final ValueChanged<int> onChanged;
-  const _FilterRow({required this.selected, required this.onChanged});
+  const _FilterRow({required this.selected, required this.allCount, required this.availableCount, required this.incompleteCount, required this.onChanged});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -429,17 +435,17 @@ class _FilterRow extends StatelessWidget {
           children: [
             _Filter(
                 label: 'همه',
-                count: _exams.length,
+                count: allCount,
                 selected: selected == 0,
                 onTap: () => onChanged(0)),
             _Filter(
                 label: 'قابل انجام',
-                count: _exams.where((e) => e.status != 'تکمیل نشده').length,
+                count: availableCount,
                 selected: selected == 1,
                 onTap: () => onChanged(1)),
             _Filter(
                 label: 'ناتمام',
-                count: _exams.where((e) => e.status == 'تکمیل نشده').length,
+                count: incompleteCount,
                 selected: selected == 2,
                 onTap: () => onChanged(2)),
           ],
