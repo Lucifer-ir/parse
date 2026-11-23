@@ -77,22 +77,46 @@ jobs:
       - name: Build Google Play AAB
         run: flutter build appbundle --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols --dart-define=PARSE_API_URL=https://api.aiparseh.ir/api
 
-      - name: Upload build artifacts (main and tags)
+      - name: Prepare outputs
+        run: |
+          rm -rf outputs
+          mkdir -p outputs
+          cp build/app/outputs/flutter-apk/app-release.apk outputs/parseh-universal-release.apk
+          cp build/app/outputs/bundle/release/app-release.aab outputs/parseh-release.aab
+          if [ -d debug_symbols ]; then cp -R debug_symbols outputs/debug_symbols; fi
+          sha256sum outputs/*.apk outputs/*.aab > outputs/SHA256SUMS.txt
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Parse-${{ github.ref_name }}-android
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            outputs/parseh-universal-release.apk
+            outputs/parseh-release.aab
+            outputs/SHA256SUMS.txt
+            outputs/debug_symbols/
           retention-days: 14
+
+      - name: Save outputs in repository
+        if: github.ref_type == 'branch'
+        run: |
+          git config user.name 'GitHub Actions Bot'
+          git config user.email 'actions@github.com'
+          git add outputs/
+          if git diff --cached --quiet; then
+            echo "No output changes to commit."
+          else
+            git commit -m "chore: update Android build outputs"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
       - name: Prepare release assets
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p release-assets
-          cp build/app/outputs/flutter-apk/app-release.apk release-assets/Parse-${GITHUB_REF_NAME}-universal.apk
-          cp build/app/outputs/bundle/release/app-release.aab release-assets/Parse-${GITHUB_REF_NAME}.aab
-          if [ -d debug_symbols ]; then zip -r release-assets/Parse-${GITHUB_REF_NAME}-debug-symbols.zip debug_symbols; fi
+          cp outputs/parseh-universal-release.apk "release-assets/Parse-${GITHUB_REF_NAME}-universal.apk"
+          cp outputs/parseh-release.aab "release-assets/Parse-${GITHUB_REF_NAME}.aab"
+          if [ -d outputs/debug_symbols ]; then zip -r "release-assets/Parse-${GITHUB_REF_NAME}-debug-symbols.zip" outputs/debug_symbols; fi
           sha256sum release-assets/* > release-assets/SHA256SUMS.txt
 
       - name: Publish GitHub Release
