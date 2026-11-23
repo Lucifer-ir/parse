@@ -93,11 +93,11 @@ class _WeeklyStatsState extends State<_WeeklyStats> {
     try {
       final results=await Future.wait([ParseApi.get('exams'),ParseApi.get('activities'),ParseApi.get('resources')]);
       if(!mounted)return;
-      setState(()=>{
-        _examCount=(results[0]['rows'] as List? ?? []).length,
-        _activityCount=(results[1]['rows'] as List? ?? []).length,
-        _bookCount=(results[2]['rows'] as List? ?? []).where((e)=>e is Map&&['book','handout'].contains(e['resource_type'])).length,
-        _loading=false
+      setState(() {
+        _examCount=(results[0]['rows'] as List? ?? []).length;
+        _activityCount=(results[1]['rows'] as List? ?? []).length;
+        _bookCount=(results[2]['rows'] as List? ?? []).where((e)=>e is Map&&['book','handout'].contains(e['resource_type'])).length;
+        _loading=false;
       });
     }catch(_){if(mounted)setState(()=>_loading=false);}
   }
