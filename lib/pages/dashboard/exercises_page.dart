@@ -294,7 +294,7 @@ class _StudentActivityPageState extends State<StudentActivityPage> {
     if (_audioUploading.contains(questionId)) return;
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
+        type: FileType.custom,
         allowMultiple: false,
         withData: true,
         allowedExtensions: const ['mp3','m4a','wav','ogg','oga','webm','aac','mp4','3gp'],
