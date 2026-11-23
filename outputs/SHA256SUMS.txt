@@ -1,2 +1,2 @@
-018210ae090839d0b5232add81dc643e66818efe498a3b9bcfc7f6f72f46970d  outputs/parseh-universal-release.apk
-26dc86d2ecf76100f34da0ca40bfaa586517e6f406ad5e905476d7ee39992e60  outputs/parseh-release.aab
+96d7b2cb4e9ee8c7c0a787feb586c9ac6b28cd23d92289618ed5d8ddef8419bf  outputs/parseh-universal-release.apk
+68088be19edf2b41643f1088802d52636433e9c9236304010708abd9e1d5d2f9  outputs/parseh-release.aab
