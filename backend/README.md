@@ -1,12 +1,21 @@
-# Parse Backend and Admin foundation
+# Parse API foundation
 
-This directory is the PHP backend scaffold. It expects PHP 8.2+, PDO MySQL, HTTPS and a web server configured to route API requests to public/index.php.
+PHP 8.2+ / MySQL starter. This stage deliberately leaves Flutter UI widgets, layouts, spacing, colors, navigation and typography unchanged.
 
-## Setup
-1. Copy .env.example to .env and fill database values, APP_SECRET and public URL.
-2. Create the database and import database/schema.sql.
-3. Point the web root to backend/public (do not expose config, SQL, or .env).
-4. Configure Firebase Admin SDK credentials outside Git.
-5. Configure AI provider key/model in the admin settings. Never ship provider keys in Flutter.
+## Deploy
+- Use PHP 8.2+, PDO MySQL, HTTPS.
+- Create database and import `database/schema.sql`.
+- Copy `.env.example` to `.env` and fill DB credentials and comma-separated CORS origins.
+- Set web root to `public/`. Do not expose this directory's parent.
+- Verify `GET /api/health`.
 
-Implemented starter endpoint: POST /api/auth/login. Registration, content, exams, listening, speaking, AI question generation, notification administration and role-based admin workflows are API contracts to be implemented in subsequent work. The admin page is a protected-development placeholder, not production-ready.
+## Routes
+- `POST /api/auth/register`: username, optional phone, name, password (8+ characters); creates student.
+- `POST /api/auth/login`: username or phone + password; returns bearer token.
+- `GET /api/auth/me`: bearer token required.
+- `POST /api/auth/logout`: revokes bearer token.
+
+Tokens are random 256-bit values; only SHA-256 hashes are stored. PDO prepared statements and password_hash/password_verify are used. Error details are only exposed in development. Restrict CORS origins. Add throttling, email/phone verification, password reset, admin role provisioning, monitoring and security review before production.
+
+## Flutter
+Configure API endpoint at build time with `--dart-define=PARSE_API_URL=https://api.example.com/api`. UI work is intentionally not included in this foundation commit.
