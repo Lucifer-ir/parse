@@ -71,10 +71,10 @@ jobs:
             -destkeypass verify-pass-123456 -destalias "$KEY_ALIAS" -noprompt >/dev/null
 
       - name: Build universal release APK
-        run: flutter build apk --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
+        run: flutter build apk --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols --dart-define=PARSE_API_URL=https://api.aiparseh.ir/api
 
       - name: Build Google Play AAB
-        run: flutter build appbundle --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
+        run: flutter build appbundle --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols --dart-define=PARSE_API_URL=https://api.aiparseh.ir/api
 
       - name: Prepare release assets
         run: |
