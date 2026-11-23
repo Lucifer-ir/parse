@@ -57,7 +57,12 @@ class _StudentExamPageState extends State<StudentExamPage> {
       if (saved is Map) {
         for (final entry in saved.entries) {
           final id = int.tryParse(entry.key.toString());
-          if (id != null) _answers[id] = entry.value;
+          if (id != null) {
+            _answers[id] = entry.value;
+            if (entry.value is Map && entry.value['file_name'] != null) {
+              _audioNames[id] = entry.value['file_name'].toString();
+            }
+          }
         }
       }
       _expiresAt = _parseUtc(attempt['expires_at']);
@@ -179,7 +184,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
     if (_audioUploading.contains(questionId)) return;
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
+        type: FileType.custom,
         allowMultiple: false,
         withData: true,
         allowedExtensions: const ['mp3','m4a','wav','ogg','oga','webm','aac','mp4','3gp'],
@@ -437,7 +442,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
               child: const Text('قبلی'),
             ),
             const Spacer(),
-            Text(_answers.containsKey(questionId) ? 'پاسخ ثبت شده' : 'بدون پاسخ', style: const TextStyle(color: Color(0xFF77858E), fontSize: 12)),
+            Text((_answers.containsKey(questionId) || _audioNames.containsKey(questionId)) ? 'پاسخ ثبت شده' : 'بدون پاسخ', style: const TextStyle(color: Color(0xFF77858E), fontSize: 12)),
             const Spacer(),
             if (_index < _questions.length - 1)
               FilledButton(onPressed: () => setState(() => _index++), child: const Text('بعدی'))
