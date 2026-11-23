@@ -1,8 +1,9 @@
-name: Build and Save Android Artifacts
+name: Build Android Release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -60,21 +61,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           keytool -list -keystore android/app/upload-keystore.jks \
-            -storetype JKS \
-            -storepass "$KEYSTORE_PASSWORD" \
-            -alias "$KEY_ALIAS" >/dev/null
+            -storetype JKS -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
           keytool -importkeystore \
             -srckeystore android/app/upload-keystore.jks \
-            -srcstoretype JKS \
-            -srcstorepass "$KEYSTORE_PASSWORD" \
-            -srckeypass "$KEY_PASSWORD" \
-            -srcalias "$KEY_ALIAS" \
+            -srcstoretype JKS -srcstorepass "$KEYSTORE_PASSWORD" \
+            -srckeypass "$KEY_PASSWORD" -srcalias "$KEY_ALIAS" \
             -destkeystore /tmp/parseh-signing-verify.jks \
-            -deststoretype JKS \
-            -deststorepass verify-pass-123456 \
-            -destkeypass verify-pass-123456 \
-            -destalias "$KEY_ALIAS" \
-            -noprompt >/dev/null
+            -deststoretype JKS -deststorepass verify-pass-123456 \
+            -destkeypass verify-pass-123456 -destalias "$KEY_ALIAS" -noprompt >/dev/null
 
       - name: Build universal release APK
         run: flutter build apk --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
@@ -82,19 +76,18 @@ jobs:
       - name: Build Google Play AAB
         run: flutter build appbundle --release --no-tree-shake-icons --obfuscate --split-debug-info=debug_symbols
 
-      - name: Prepare outputs
+      - name: Prepare release assets
         run: |
-          rm -rf outputs
-          mkdir -p outputs
-          cp build/app/outputs/flutter-apk/app-release.apk outputs/parseh-universal-release.apk
-          cp build/app/outputs/bundle/release/app-release.aab outputs/parseh-release.aab
-          if [ -d debug_symbols ]; then cp -r debug_symbols outputs/debug_symbols; fi
-          sha256sum outputs/*.apk outputs/*.aab > outputs/SHA256SUMS.txt
+          mkdir -p release-assets
+          cp build/app/outputs/flutter-apk/app-release.apk release-assets/Parse-${GITHUB_REF_NAME}-universal.apk
+          cp build/app/outputs/bundle/release/app-release.aab release-assets/Parse-${GITHUB_REF_NAME}.aab
+          if [ -d debug_symbols ]; then zip -r release-assets/Parse-${GITHUB_REF_NAME}-debug-symbols.zip debug_symbols; fi
+          sha256sum release-assets/* > release-assets/SHA256SUMS.txt
 
-      - name: Save artifacts in repository
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name 'GitHub Actions Bot'
-          git config user.email 'actions@github.com'
-          git add outputs/
-          git commit -m "Build Android APK and AAB" || echo "No output changes"
-          git push
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --title "Parse ${GITHUB_REF_NAME}" \
+            --generate-notes
