@@ -274,7 +274,7 @@ class _StudentActivityPageState extends State<StudentActivityPage> {
     return raw.asMap().entries.map((entry) {
       if (entry.value is Map) return Map<String, dynamic>.from(entry.value as Map);
       return <String, dynamic>{
-        'id': String.fromCharCode(65 + entry.key),
+        'id': entry.value.toString(),
         'text': entry.value.toString(),
       };
     }).toList();
