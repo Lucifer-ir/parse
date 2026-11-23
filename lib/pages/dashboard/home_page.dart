@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../core/api_client.dart';
 
 const _ink = Color(0xFF152238);
 const _muted = Color(0xFF777982);
@@ -79,53 +80,38 @@ class _GreetingBanner extends StatelessWidget {
       );
 }
 
-class _WeeklyStats extends StatelessWidget {
+class _WeeklyStats extends StatefulWidget {
   const _WeeklyStats();
-  @override
-  Widget build(BuildContext context) => Row(children: const [
-        Expanded(
-            child: _StatPill(
-                value: '۷',
-                label: 'روز پیوسته',
-                icon: Icons.local_fire_department_rounded)),
-        SizedBox(width: 7),
-        Expanded(
-            child: _StatPill(
-                value: '۸۵٪',
-                label: 'میانگین نمره',
-                icon: Icons.trending_up_rounded)),
-        SizedBox(width: 7),
-        Expanded(
-            child: _StatPill(
-                value: '۱۲',
-                label: 'تمرین هفته',
-                icon: Icons.check_circle_outline_rounded)),
-      ]);
+  @override State<_WeeklyStats> createState() => _WeeklyStatsState();
+}
+
+class _WeeklyStatsState extends State<_WeeklyStats> {
+  int _examCount=0, _activityCount=0, _bookCount=0;
+  bool _loading=true;
+  @override void initState(){super.initState();_load();}
+  Future<void> _load() async {
+    try {
+      final results=await Future.wait([ParseApi.get('exams'),ParseApi.get('activities'),ParseApi.get('resources')]);
+      if(!mounted)return;
+      setState(()=>{
+        _examCount=(results[0]['rows'] as List? ?? []).length,
+        _activityCount=(results[1]['rows'] as List? ?? []).length,
+        _bookCount=(results[2]['rows'] as List? ?? []).where((e)=>e is Map&&['book','handout'].contains(e['resource_type'])).length,
+        _loading=false
+      });
+    }catch(_){if(mounted)setState(()=>_loading=false);}
+  }
+  @override Widget build(BuildContext context)=>Row(children:[
+    Expanded(child:_StatPill(value:_loading?'…':'$_examCount',label:'آزمون فعال',icon:Icons.quiz_outlined)),
+    const SizedBox(width:7),Expanded(child:_StatPill(value:_loading?'…':'$_activityCount',label:'تمرین و تکلیف',icon:Icons.assignment_outlined)),
+    const SizedBox(width:7),Expanded(child:_StatPill(value:_loading?'…':'$_bookCount',label:'منابع آموزشی',icon:Icons.menu_book_rounded)),
+  ]);
 }
 
 class _StatPill extends StatelessWidget {
-  final String value, label;
-  final IconData icon;
-  const _StatPill(
-      {required this.value, required this.label, required this.icon});
-  @override
-  Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 5),
-      decoration: BoxDecoration(
-          color: _boxBg,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: _line)),
-      child: Column(children: [
-        Icon(icon, color: _mint, size: 20),
-        const SizedBox(height: 5),
-        Text(value,
-            style: const TextStyle(
-                color: _ink, fontSize: 15, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 2),
-        Text(label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: _muted, fontSize: 9))
-      ]));
+  final String value, label; final IconData icon;
+  const _StatPill({required this.value,required this.label,required this.icon});
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(vertical:12,horizontal:5),decoration:BoxDecoration(color:_boxBg,borderRadius:BorderRadius.circular(17),border:Border.all(color:_line)),child:Column(children:[Icon(icon,color:_mint,size:20),const SizedBox(height:5),Text(value,style:const TextStyle(color:_ink,fontSize:15,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(label,textAlign:TextAlign.center,style:const TextStyle(color:_muted,fontSize:9))]));
 }
 
 // ─── Top dashboard ─────────────────────────────────────────────────────
