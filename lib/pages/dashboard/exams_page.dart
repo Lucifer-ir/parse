@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'exam_detail_page.dart';
+import 'student_exam_page.dart';
+import '../../core/api_client.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 //  COLOR THEME  (هماهنگ با exam_detail_page.dart)
@@ -37,6 +39,7 @@ class ExamItem {
   final String questions;
   final String status;
   final Color color;
+  final int? id;
 
   const ExamItem({
     required this.title,
@@ -46,6 +49,7 @@ class ExamItem {
     required this.questions,
     required this.status,
     required this.color,
+    this.id,
   });
 }
 
@@ -53,53 +57,7 @@ class ExamItem {
 //  SAMPLE DATA
 // ═══════════════════════════════════════════════════════════════════
 
-const _exams = [
-  ExamItem(
-    title: 'آزمون پیشرفت ترم',
-    subtitle: 'واژگان، گرامر، شنیداری و درک مطلب',
-    level: 'B1',
-    duration: '۳۰ دقیقه',
-    questions: '۲۰ سؤال',
-    status: 'آماده شروع',
-    color: Color(0xFF08CDBB),
-  ),
-  ExamItem(
-    title: 'آزمون تعیین سطح',
-    subtitle: 'ارزیابی جامع سطح زبان انگلیسی',
-    level: 'Placement',
-    duration: '۴۵ دقیقه',
-    questions: '۳۰ سؤال',
-    status: 'پیشنهاد پارسه',
-    color: Color(0xFF8A7CFF),
-  ),
-  ExamItem(
-    title: 'مرور درس‌های اخیر',
-    subtitle: 'مرور سریع مباحث جلسه‌های اخیر',
-    level: 'A2',
-    duration: '۱۵ دقیقه',
-    questions: '۱۰ سؤال',
-    status: 'تکمیل نشده',
-    color: Color(0xFFFFB454),
-  ),
-  ExamItem(
-    title: 'آزمون شنیداری پیشرفته',
-    subtitle: 'تمرکز بر مکالمات واقعی و لهجه‌های مختلف',
-    level: 'B2',
-    duration: '۲۰ دقیقه',
-    questions: '۱۵ سؤال',
-    status: 'آماده شروع',
-    color: Color(0xFF7B61FF),
-  ),
-  ExamItem(
-    title: 'آزمون مکالمه',
-    subtitle: 'ارزیابی تلفظ و روانی کلام',
-    level: 'B1',
-    duration: '۲۵ دقیقه',
-    questions: '۸ سؤال',
-    status: 'تکمیل نشده',
-    color: Color(0xFFFF9F43),
-  ),
-];
+
 
 // ═══════════════════════════════════════════════════════════════════
 //  BACKGROUND PATTERN  (مشابه exam_detail_page.dart)
@@ -155,16 +113,54 @@ class ExamsPage extends StatefulWidget {
 
 class _ExamsPageState extends State<ExamsPage> {
   int filter = 0;
+  List<ExamItem> _exams = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExams();
+  }
+
+  Future<void> _loadExams() async {
+    try {
+      final response = await ParseApi.get('exams');
+      final rows = (response['rows'] as List? ?? const []).whereType<Map>();
+      const colors = [Color(0xFF168F89), Color(0xFF426B9A), Color(0xFF98734B), Color(0xFF7B6A9B)];
+      final items = rows.map((row) {
+        final id = int.tryParse((row['id'] ?? '').toString()) ?? 0;
+        final duration = int.tryParse((row['duration_minutes'] ?? '0').toString()) ?? 0;
+        final count = int.tryParse((row['question_count'] ?? '0').toString()) ?? 0;
+        return ExamItem(
+          id: id,
+          title: (row['title'] ?? 'آزمون').toString(),
+          subtitle: (row['description'] ?? row['subject'] ?? 'آزمون آموزشی').toString(),
+          level: (row['level'] ?? '—').toString(),
+          duration: '$duration دقیقه',
+          questions: '$count سؤال',
+          status: 'آماده شروع',
+          color: colors[id % colors.length],
+        );
+      }).where((item) => item.id != null && item.id! > 0).toList();
+      if (!mounted) return;
+      setState(() {
+        _exams = items;
+        _loading = false;
+        _error = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error.toString();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final visible = filter == 0
-        ? _exams
-        : _exams
-            .where((e) => filter == 1
-                ? e.status != 'تکمیل نشده'
-                : e.status == 'تکمیل نشده')
-            .toList();
+    final visible = filter == 0 ? _exams : _exams;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -194,7 +190,7 @@ class _ExamsPageState extends State<ExamsPage> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () {},
+                              onPressed: _loadExams,
                               icon: const Icon(
                                 Icons.search_rounded,
                                 color: ExamColors.textPrimary,
@@ -271,6 +267,12 @@ class _ExamsPageState extends State<ExamsPage> {
                     ),
                   ),
                 ),
+                if (_loading)
+                  const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())))
+                else if (_error != null)
+                  SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center)))
+                else if (visible.isEmpty)
+                  const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(24), child: Text('فعلاً آزمون منتشرشده‌ای برای حساب شما وجود ندارد.', textAlign: TextAlign.center, style: TextStyle(color: ExamColors.textGray))))
                 // Exam cards
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
@@ -527,7 +529,9 @@ class _ExamCard extends StatelessWidget {
           HapticFeedback.selectionClick();
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ExamDetailPage(exam: exam)),
+            MaterialPageRoute(builder: (_) => exam.id != null
+                ? StudentExamPage(examId: exam.id!, title: exam.title)
+                : ExamDetailPage(exam: exam)),
           );
         },
         borderRadius: BorderRadius.circular(12),
