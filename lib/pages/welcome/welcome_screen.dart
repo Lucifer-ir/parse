@@ -162,37 +162,6 @@ class WelcomeScreen extends StatelessWidget {
                                   CrossAxisAlignment.stretch,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Register button
-                                FilledButton(
-                                  onPressed: () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      AppRoutes.register,
-                                    );
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: kGreen,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size.fromHeight(58),
-                                    elevation: 0,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'شروع یادگیری',
-                                    style: TextStyle(
-                                      fontFamily: 'Estedad',
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 12),
-
                                 // Login button
                                 OutlinedButton(
                                   onPressed: () {
