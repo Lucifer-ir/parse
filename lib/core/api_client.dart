@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -92,6 +93,43 @@ class ParseApi {
       throw ApiException('پاسخ سرور بیش از حد طول کشید. اتصال اینترنت را بررسی و دوباره تلاش کنید.');
     } catch (_) {
       throw ApiException('ارتباط با سرور Parse برقرار نشد. اتصال اینترنت یا آدرس API را بررسی کنید.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required Uint8List bytes,
+    required String filename,
+    String fieldName = 'audio',
+  }) async {
+    if (bytes.isEmpty) throw ApiException('فایل صوتی خالی است.');
+    if (bytes.length > 15 * 1024 * 1024) {
+      throw ApiException('حجم فایل صوتی نباید بیشتر از ۱۵ مگابایت باشد.');
+    }
+    try {
+      final request = http.MultipartRequest('POST', uri(path));
+      request.headers.addAll(await authHeaders());
+      request.headers['Accept'] = 'application/json';
+      request.files.add(http.MultipartFile.fromBytes(fieldName, bytes, filename: filename));
+      final streamed = await request.send().timeout(_requestTimeout);
+      final body = await streamed.stream.bytesToString().timeout(_requestTimeout);
+      dynamic decoded = <String, dynamic>{};
+      if (body.trim().isNotEmpty) {
+        try { decoded = jsonDecode(body); }
+        on FormatException {
+          throw ApiException('پاسخ سرور قابل‌خواندن نیست (HTTP ${streamed.statusCode}).', streamed.statusCode);
+        }
+      }
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        throw ApiException(_errorMessage(decoded, streamed.statusCode), streamed.statusCode);
+      }
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{};
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw ApiException('زمان بارگذاری فایل صوتی تمام شد. دوباره تلاش کنید.');
+    } catch (_) {
+      throw ApiException('بارگذاری فایل صوتی به سرور انجام نشد.');
     }
   }
 
