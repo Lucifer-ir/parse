@@ -20,7 +20,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - name: Build web
-        run: flutter build web --release --base-href "/parse/" --dart-define=PARSE_API_URL="${{ vars.PARSE_API_URL }}"
+        run: flutter build web --release --base-href "/parse/" --dart-define=PARSE_API_URL="${{ vars.PARSE_API_URL || 'https://api.aiparseh.ir/api' }}"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
