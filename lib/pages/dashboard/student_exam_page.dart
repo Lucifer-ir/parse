@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 
 class StudentExamPage extends StatefulWidget {
@@ -16,6 +18,8 @@ class _StudentExamPageState extends State<StudentExamPage> {
   final Map<int, TextEditingController> _textControllers = {};
   final Map<int, Timer> _saveTimers = {};
   final Map<int, bool> _saving = {};
+  final Set<int> _audioUploading = {};
+  final Map<int, String> _audioNames = {};
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -171,10 +175,103 @@ class _StudentExamPageState extends State<StudentExamPage> {
   String _optionText(Map<String, dynamic> item) =>
       (item['text'] ?? item['label'] ?? item['title'] ?? item['value'] ?? '').toString();
 
+  Future<void> _uploadSpeakingAudio(int questionId) async {
+    if (_audioUploading.contains(questionId)) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+        withData: true,
+        allowedExtensions: const ['mp3','m4a','wav','ogg','oga','webm','aac','mp4','3gp'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        throw ApiException('خواندن فایل انتخاب‌شده ممکن نشد. فایل دیگری انتخاب کنید.');
+      }
+      setState(() => _audioUploading.add(questionId));
+      final uploaded = await ParseApi.uploadFile(
+        'exams/${widget.examId}/audio/$questionId',
+        bytes: bytes,
+        filename: file.name,
+      );
+      if (!mounted) return;
+      setState(() {
+        _audioNames[questionId] = (uploaded['file_name'] ?? file.name).toString();
+        _audioUploading.remove(questionId);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('پاسخ صوتی آزمون ذخیره شد.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _audioUploading.remove(questionId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  Future<void> _playAudioPrompt(String rawUrl) async {
+    try {
+      final trimmed = rawUrl.trim();
+      final uri = trimmed.startsWith('http') ? Uri.parse(trimmed) : ParseApi.uri(trimmed);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('پخش فایل صوتی سؤال ممکن نشد.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('آدرس فایل صوتی معتبر نیست: $error')),
+        );
+      }
+    }
+  }
+
   Widget _questionInput(Map<String, dynamic> question) {
     final id = int.parse(question['id'].toString());
     final type = (question['question_type'] ?? 'written').toString();
     final options = _options(question['options']);
+    if (type == 'speaking') {
+      final uploading = _audioUploading.contains(id);
+      final restored = _answers[id] is Map ? (_answers[id]['file_name'] ?? '').toString() : '';
+      final name = _audioNames[id] ?? (restored.isNotEmpty ? restored : null);
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5FAF9),
+          border: Border.all(color: const Color(0xFFE2E8ED)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('پاسخ گفتاری',style: TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            const Text(
+              'پاسخ خود را ضبط کنید و فایل صوتی را از دستگاه انتخاب و ارسال کنید. فایل در پاسخ‌نامه ذخیره می‌شود.',
+              style: TextStyle(fontSize: 12,height: 1.7,color: Color(0xFF77858E)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: uploading ? null : () => _uploadSpeakingAudio(id),
+              icon: uploading
+                  ? const SizedBox(width: 17,height: 17,child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.mic_rounded),
+              label: Text(uploading ? 'در حال ارسال صوت...' : name == null ? 'انتخاب و ارسال فایل صوتی' : 'تعویض فایل صوتی'),
+            ),
+            if(name!=null) ...[
+              const SizedBox(height: 6),
+              Text('فایل ذخیره‌شده: $name',style: const TextStyle(color: Color(0xFF168F89),fontSize: 11)),
+            ],
+          ],
+        ),
+      );
+    }
     if (type == 'multiple_choice' || type == 'true_false') {
       final values = options.isNotEmpty ? options : [
         {'id': 'true', 'text': 'درست'},
@@ -200,13 +297,13 @@ class _StudentExamPageState extends State<StudentExamPage> {
     });
     return TextField(
       controller: controller,
-      minLines: type == 'written' || type == 'speaking' ? 4 : 2,
+      minLines: type == 'written' ? 4 : 2,
       maxLines: 8,
       textDirection: TextDirection.rtl,
       onChanged: (value) { _answers[id] = value; _scheduleSave(id); },
       decoration: InputDecoration(
-        hintText: type == 'speaking'
-            ? 'پاسخ گفتاری را ثبت کنید. در نسخه فعلی پاسخ متنی دریافت می‌شود.'
+        hintText: type == 'listening'
+            ? 'پاسخ خود را درباره محتوای شنیداری بنویسید...'
             : 'پاسخ خود را بنویسید...',
         filled: true,
         fillColor: const Color(0xFFF8FAFB),
@@ -315,6 +412,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text(_typeLabel(type), style: const TextStyle(color: Color(0xFF168F89), fontSize: 12, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 14),
+                  if ((question['audio_url'] ?? '').toString().trim().isNotEmpty) ...[
+                    OutlinedButton.icon(
+                      onPressed: () => _playAudioPrompt(question['audio_url'].toString()),
+                      icon: const Icon(Icons.volume_up_rounded),
+                      label: const Text('پخش فایل صوتی سؤال'),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Text(question['question_text']?.toString() ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.8)),
                   const SizedBox(height: 18),
                   _questionInput(question),
