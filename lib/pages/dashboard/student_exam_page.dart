@@ -33,19 +33,19 @@ class _StudentExamPageState extends State<StudentExamPage> {
   DateTime? _parseUtc(dynamic value) {
     if (value == null) return null;
     final raw = value.toString();
-    return DateTime.tryParse(raw.endsWith('Z') ? raw : '\${raw}Z')?.toUtc();
+    return DateTime.tryParse(raw.endsWith('Z') ? raw : '${raw}Z')?.toUtc();
   }
 
   Future<void> _loadExam() async {
     try {
-      final detail = await ParseApi.get('exams/\${widget.examId}');
+      final detail = await ParseApi.get('exams/${widget.examId}');
       final exam = Map<String, dynamic>.from(detail['exam'] as Map);
       final rows = (exam['questions'] as List? ?? const [])
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
       if (rows.isEmpty) throw ApiException('این آزمون هنوز سؤال منتشرشده ندارد.');
-      final started = await ParseApi.post('exams/\${widget.examId}/start', {});
+      final started = await ParseApi.post('exams/${widget.examId}/start', {});
       final attempt = Map<String, dynamic>.from(started['attempt'] as Map);
       _expiresAt = _parseUtc(attempt['expires_at']);
       if (_expiresAt == null) throw ApiException('زمان پایان آزمون از سرور دریافت نشد.');
@@ -86,7 +86,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
   String get _timeLabel {
     final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '\${_remaining.inHours.toString().padLeft(2, '0')}:\$minutes:\$seconds';
+    return '${_remaining.inHours.toString().padLeft(2, '0')}:$minutes:$seconds';
   }
 
   String _typeLabel(String value) => ({
@@ -102,7 +102,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
 
   List<Map<String, dynamic>> _options(dynamic raw) {
     if (raw is! List) return [];
-    return raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+    return raw.asMap().entries.map((entry) {
+      final item = entry.value;
+      if (item is Map) return Map<String, dynamic>.from(item);
+      return <String, dynamic>{
+        'id': String.fromCharCode(65 + entry.key),
+        'text': item.toString(),
+      };
+    }).toList();
   }
 
   String _optionId(Map<String, dynamic> item, int index) =>
@@ -128,7 +135,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
             groupValue: _answers[id]?.toString(),
             activeColor: const Color(0xFF168F89),
             contentPadding: EdgeInsets.zero,
-            title: Text('\$value  \${_optionText(entry.value)}', textDirection: TextDirection.rtl),
+            title: Text('$value  ${_optionText(entry.value)}', textDirection: TextDirection.rtl),
             onChanged: (next) => setState(() => _answers[id] = next),
           );
         }).toList(),
@@ -177,12 +184,12 @@ class _StudentExamPageState extends State<StudentExamPage> {
       for (final question in _questions) {
         final id = int.parse(question['id'].toString());
         if (!_answers.containsKey(id) || _answers[id] == null) continue;
-        await ParseApi.post('exams/\${widget.examId}/answers', {
+        await ParseApi.post('exams/${widget.examId}/answers', {
           'question_id': id,
           'answer': _answers[id],
         });
       }
-      final response = await ParseApi.post('exams/\${widget.examId}/submit', {});
+      final response = await ParseApi.post('exams/${widget.examId}/submit', {});
       _timer?.cancel();
       if (!mounted) return;
       setState(() {
@@ -241,7 +248,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('سؤال \${_index + 1} از \${_questions.length}', style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text('سؤال ${_index + 1} از ${_questions.length}', style: const TextStyle(fontWeight: FontWeight.w800)),
               Row(children: [
                 const Icon(Icons.timer_outlined, size: 18, color: Color(0xFF168F89)),
                 const SizedBox(width: 6),
@@ -309,9 +316,9 @@ class _StudentExamPageState extends State<StudentExamPage> {
             const SizedBox(height: 16),
             const Text('آزمون با موفقیت ثبت شد', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 10),
-            Text('نمره خودکار: \$score از \$total', style: const TextStyle(fontSize: 15)),
+            Text('نمره خودکار: $score از $total', style: const TextStyle(fontSize: 15)),
             const SizedBox(height: 8),
-            Text(pending > 0 ? '\$pending پاسخ برای بررسی مدرس باقی مانده است.' : 'همه پاسخ‌ها به‌صورت خودکار بررسی شدند.'),
+            Text(pending > 0 ? '$pending پاسخ برای بررسی مدرس باقی مانده است.' : 'همه پاسخ‌ها به‌صورت خودکار بررسی شدند.'),
             const SizedBox(height: 20),
             FilledButton(onPressed: () => Navigator.pop(context), child: const Text('بازگشت به آزمون‌ها')),
           ]),
