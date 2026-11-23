@@ -81,11 +81,10 @@ class _StudentExamPageState extends State<StudentExamPage> {
     });
   }
 
-  Future<void> _saveQuestion(int questionId) async {
-    if (!_answers.containsKey(questionId) || _answers[questionId] == null) return;
-    if (_saving[questionId] == true) {
-      _scheduleSave(questionId);
-      return;
+  Future<bool> _saveQuestion(int questionId) async {
+    if (!_answers.containsKey(questionId) || _answers[questionId] == null) return true;
+    while (_saving[questionId] == true) {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
     }
     _saving[questionId] = true;
     try {
@@ -93,13 +92,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
         'question_id': questionId,
         'answer': _answers[questionId],
       });
+      return true;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ذخیره خودکار پاسخ انجام نشد: ' + error.toString())),
         );
       }
-      rethrow;
+      return false;
     } finally {
       _saving[questionId] = false;
     }
@@ -111,7 +111,9 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
     _saveTimers.clear();
     for (final questionId in _answers.keys.toList()) {
-      await _saveQuestion(questionId);
+      if (!await _saveQuestion(questionId)) {
+        throw ApiException('ذخیره یکی از پاسخ‌ها ناموفق بود. دوباره تلاش کنید.');
+      }
     }
   }
 
@@ -157,7 +159,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
       final item = entry.value;
       if (item is Map) return Map<String, dynamic>.from(item);
       return <String, dynamic>{
-        'id': String.fromCharCode(65 + entry.key),
+        'id': item.toString(),
         'text': item.toString(),
       };
     }).toList();
