@@ -5,13 +5,30 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/api_client.dart';
 
 const _ink = Color(0xFF152238), _muted = Color(0xFF777982), _mint = Color(0xFF08CDBB), _line = Color(0xFFEEF0F3);
 
 class BooksPage extends StatefulWidget { const BooksPage({super.key}); @override State<BooksPage> createState()=>_BooksPageState(); }
 class _BooksPageState extends State<BooksPage>{
-  final _books=_catalog; final Map<String,double> _progress={}; final Map<String,String> _paths={}; final Map<String,double> _downloads={}; final _search=TextEditingController(); bool _searching=false;
-  @override void initState(){super.initState();_loadLocal();}
+  List<_Book> _books=[]; final Map<String,double> _progress={}; final Map<String,String> _paths={}; final Map<String,double> _downloads={}; final _search=TextEditingController(); bool _searching=false; bool _loading=true;
+  @override void initState(){super.initState();_loadCatalog();}
+  Future<void> _loadCatalog() async {
+    try {
+      final response=await ParseApi.get('resources');
+      final rows=(response['rows'] as List? ?? const []).whereType<Map>();
+      const colors=[Color(0xFF168F89),Color(0xFF426B9A),Color(0xFF98734B),Color(0xFF7B6A9B)];
+      _books=rows.where((row)=>['book','handout'].contains(row['resource_type'])).map((row){
+        final id=(row['id']??'').toString();
+        final fileUrl=(row['file_url']??'').toString();
+        final url=fileUrl.startsWith('http')?fileUrl:ParseApi.uri('resources/$id/download').toString();
+        return _Book(id,(row['title']??'').toString(),(row['description']??'').toString(),url,colors[int.tryParse(id)??0 % colors.length]);
+      }).toList();
+      await _loadLocal();
+    } catch(error) {
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(error.toString())));
+    } finally { if(mounted)setState(()=>_loading=false); }
+  }
   Future<void> _loadLocal() async {final prefs=await SharedPreferences.getInstance(); for(final b in _books){final path=prefs.getString('book_${b.id}');if(path!=null&&File(path).existsSync())_paths[b.id]=path;_progress[b.id]=prefs.getDouble('progress_${b.id}')??0;} if(mounted)setState((){});}
   List<_Book> get _filtered{final q=_search.text.trim().toLowerCase();return q.isEmpty?_books:_books.where((b)=>b.title.toLowerCase().contains(q)).toList();}
   Future<void> _download(_Book b) async {
@@ -36,6 +53,7 @@ class _BooksPageState extends State<BooksPage>{
               'Accept': 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.8',
               'User-Agent': 'Parseh Flutter App',
               'Connection': 'keep-alive',
+              ...await ParseApi.authHeaders(),
             });
           response = await client.send(request).timeout(const Duration(seconds: 45));
           if (response.statusCode >= 200 && response.statusCode < 300) break;
@@ -125,18 +143,12 @@ class _BooksPageState extends State<BooksPage>{
     Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('کتاب‌ها',style:TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:5),const Text('کتاب‌های واقعی PDF، ذخیره‌شده داخل برنامه',style:TextStyle(color:_muted,fontSize:12))])),IconButton(onPressed:()=>setState(()=>_searching=!_searching),icon:Icon(_searching?Icons.close:Icons.search),style:IconButton.styleFrom(backgroundColor:Colors.white))]),
     if(_searching)Padding(padding:const EdgeInsets.symmetric(vertical:12),child:TextField(controller:_search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(hintText:'جستجوی کتاب',filled:true,fillColor:Colors.white))),
     const SizedBox(height:18),Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(gradient:const LinearGradient(colors:[_ink,Color(0xFF224C4A)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('کتابخانه آفلاین',style:TextStyle(color:Colors.white,fontWeight:FontWeight.bold,fontSize:16)),const SizedBox(height:8),const Text('کتاب را دریافت کن؛ سپس بدون مرورگر در PDF Reader برنامه مطالعه، علامت‌گذاری و یادداشت کن.',style:TextStyle(color:Colors.white70,fontSize:12,height:1.8)),const SizedBox(height:12),Text('${_paths.length} کتاب ذخیره‌شده',style:const TextStyle(color:_mint,fontWeight:FontWeight.bold))])),
-    const SizedBox(height:18),..._filtered.map((b)=>Padding(padding:const EdgeInsets.only(bottom:12),child:_BookTile(book:b,path:_paths[b.id],progress:_progress[b.id]??0,download:_downloads[b.id],onDownload:()=>_download(b),onOpen:()=>_open(b))))
+    const SizedBox(height:18),if(_loading)const Center(child:Padding(padding:EdgeInsets.all(24),child:CircularProgressIndicator())) else if(_filtered.isEmpty)const Padding(padding:EdgeInsets.all(24),child:Text('کتاب یا جزوه منتشرشده‌ای برای حساب شما ثبت نشده است.',textAlign:TextAlign.center,style:TextStyle(color:_muted))) else ..._filtered.map((b)=>Padding(padding:const EdgeInsets.only(bottom:12),child:_BookTile(book:b,path:_paths[b.id],progress:_progress[b.id]??0,download:_downloads[b.id],onDownload:()=>_download(b),onOpen:()=>_open(b))))
   ]))));
 }
 
 class _Book{final String id,title,description,url;final Color color;const _Book(this.id,this.title,this.description,this.url,this.color);}
-const _catalog=[
- _Book('grammar','English Grammar — Zakizadeh','کتاب گرامر انگلیسی', 'https://charbzaban.com/wp-content/uploads/2018/01/English-Grammar-Zakizadeh.pdf',Color(0xFF7B61FF)),
- _Book('book2','کتاب انگلیسی ۲','PDF آموزشی','https://charbzaban.com/wp-content/uploads/2018/02/Charbzaban.com_.pdf',Color(0xFFFF9F43)),
- _Book('504','504 واژه','کتاب واژگان','https://dl.charbzaban.com/upload/504-Charbzaban.com.pdf',Color(0xFF08CDBB)),
- _Book('book4','کتاب انگلیسی ۴','PDF آموزشی','https://charbzaban.com/wp-content/uploads/2018/01/Charbzaban.com_.pdf',Color(0xFFEF476F)),
- _Book('learning','English Learning Book','PDF آموزشی','https://dl.charbzaban.com/upload/English%20Learning%20Book.pdf',Color(0xFF152238)),
-];
+
 
 class _BookTile extends StatelessWidget{final _Book book;final String? path;final double progress;final double? download;final VoidCallback onDownload,onOpen;const _BookTile({required this.book,this.path,required this.progress,this.download,required this.onDownload,required this.onOpen});
 @override Widget build(BuildContext context){final saved=path!=null;return Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(children:[Row(children:[Container(width:48,height:58,decoration:BoxDecoration(color:book.color.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Icon(Icons.picture_as_pdf,color:book.color,size:26)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(book.title,style:const TextStyle(color:_ink,fontWeight:FontWeight.w800,fontSize:13)),const SizedBox(height:4),Text(saved?'ذخیره‌شده در برنامه':'برای مطالعه ابتدا دریافت کن',style:const TextStyle(color:_muted,fontSize:10)),if(saved)...[const SizedBox(height:8),LinearProgressIndicator(value:progress,color:book.color,backgroundColor:_line,minHeight:5)]])),if(download!=null)Text('${(download!*100).round()}٪',style:TextStyle(color:book.color,fontWeight:FontWeight.bold))else Icon(saved?Icons.check_circle:Icons.download_rounded,color:saved?Colors.green:book.color)]),if(download!=null)...[const SizedBox(height:10),LinearProgressIndicator(value:download,color:book.color)],const SizedBox(height:12),Row(children:[if(saved)Expanded(child:FilledButton.icon(onPressed:onOpen,icon:const Icon(Icons.menu_book_rounded),label:const Text('مطالعه'))),if(saved)const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:download==null?onDownload:null,icon:Icon(saved?Icons.download_done:Icons.download_rounded),label:Text(saved?'دریافت مجدد':'دانلود داخل برنامه')))])]));}}
