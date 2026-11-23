@@ -8,6 +8,8 @@ import '../pages/dashboard/dashboard_shell.dart';
 import '../pages/dashboard/account_page.dart';
 import '../pages/account/settings_page.dart';
 import '../pages/account/notifications_page.dart';
+import '../core/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void runParsehApp() => runApp(const ParsehApp());
 
@@ -89,16 +91,28 @@ class _SplashScreenState extends State<SplashScreen>
     curve: const Interval(0, .55, curve: Curves.easeOutBack),
   ));
 
+  bool _checking = true;
+  bool _offline = false;
+
   @override
-  void initState() {
-    super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 2500), _goToWelcome);
+  void initState() { super.initState(); _restoreSession(); }
+
+  Future<void> _restoreSession() async {
+    if (!mounted) return;
+    setState(() { _checking = true; _offline = false; });
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('parse_access_token');
+    if (token == null || token.isEmpty) { _open(AppRoutes.welcome); return; }
+    try {
+      await ParseApi.get('auth/me').timeout(const Duration(seconds: 12));
+      _open(AppRoutes.dashboard);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) { await ParseApi.clearToken(); _open(AppRoutes.welcome); }
+      else if (mounted) setState(() { _checking = false; _offline = true; });
+    } catch (_) { if (mounted) setState(() { _checking = false; _offline = true; }); }
   }
 
-  void _goToWelcome() {
-    if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(AppRoutes.welcome);
-  }
+  void _open(String route) { if (mounted) Navigator.of(context).pushReplacementNamed(route); }
 
   @override
   void dispose() {
@@ -159,6 +173,12 @@ class _SplashScreenState extends State<SplashScreen>
                   ],
                 ),
               ),
+              const SizedBox(height: 32),
+              if (_offline) ...[
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('اتصال به سرور برقرار نشد. حساب شما ذخیره شده است؛ اینترنت را بررسی و دوباره تلاش کنید.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 13, height: 1.7))),
+                const SizedBox(height: 14),
+                FilledButton(onPressed: _restoreSession, style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: kGreen), child: const Text('تلاش مجدد')),
+              ] else if (_checking) const SizedBox(width: 26,height: 26,child: CircularProgressIndicator(strokeWidth: 2,color: Colors.white)),
               const SizedBox(height: 56),
               // نوار پیشرفت باریک و مینیمال
               FadeTransition(
