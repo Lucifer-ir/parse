@@ -20,6 +20,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
   final Map<int, bool> _saving = {};
   final Set<int> _audioUploading = {};
   final Map<int, String> _audioNames = {};
+  final Map<int, int> _audioPlayCounts = {};
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -218,7 +219,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
   }
 
-  Future<void> _playAudioPrompt(String rawUrl) async {
+  Future<void> _playAudioPrompt(int questionId, String rawUrl) async {
+    final plays = _audioPlayCounts[questionId] ?? 0;
+    if (plays >= 2) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان پخش این فایل فقط دو بار وجود دارد.')));
+      return;
+    }
+    _audioPlayCounts[questionId] = plays + 1;
+    if (mounted) setState(() {});
     try {
       final trimmed = rawUrl.trim();
       final uri = trimmed.startsWith('http') ? Uri.parse(trimmed) : ParseApi.uri(trimmed);
@@ -336,8 +344,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
     setState(() => _submitting = true);
     try {
-      if (!autoSubmit) await _flushAnswers();
-      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
+      if (autoSubmit) {\n        try { await _flushAnswers(); } catch (_) { /* submit saved answers best-effort on expiry */ }\n      } else { await _flushAnswers(); }\n      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
       _timer?.cancel();
       if (!mounted) return;
       setState(() {
@@ -419,9 +426,9 @@ class _StudentExamPageState extends State<StudentExamPage> {
                   const SizedBox(height: 14),
                   if ((question['audio_url'] ?? '').toString().trim().isNotEmpty) ...[
                     OutlinedButton.icon(
-                      onPressed: () => _playAudioPrompt(question['audio_url'].toString()),
+                      onPressed: (_audioPlayCounts[questionId] ?? 0) >= 2 ? null : () => _playAudioPrompt(questionId, question['audio_url'].toString()),
                       icon: const Icon(Icons.volume_up_rounded),
-                      label: const Text('پخش فایل صوتی سؤال'),
+                      label: Text('پخش فایل صوتی سؤال (${2 - (_audioPlayCounts[questionId] ?? 0)} بار باقی‌مانده)'),
                     ),
                     const SizedBox(height: 10),
                   ],
