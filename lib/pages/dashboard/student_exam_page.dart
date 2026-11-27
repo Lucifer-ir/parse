@@ -219,7 +219,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
   }
 
-  Future<void> _playAudioPrompt(int questionId, String rawUrl) async {
+  Uri _mediaUri(String rawUrl) {\n    final raw = rawUrl.trim();\n    final apiBase = Uri.parse(ParseApi.uri('').toString());\n    final path = raw.startsWith('http') ? Uri.parse(raw).path : raw;\n    final filePath = path.replaceFirst(RegExp(r'^/?api/?'), '').replaceFirst(RegExp(r'^/+'), '');\n    return Uri.https('panel.aiparseh.ir', '/$filePath');\n  }\n\n  Future<void> _playAudioPrompt(int questionId, String rawUrl) async {
     final plays = _audioPlayCounts[questionId] ?? 0;
     if (plays >= 2) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان پخش این فایل فقط دو بار وجود دارد.')));
@@ -229,7 +229,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
     if (mounted) setState(() {});
     try {
       final trimmed = rawUrl.trim();
-      final uri = trimmed.startsWith('http') ? Uri.parse(trimmed) : ParseApi.uri(trimmed);
+      final uri = _mediaUri(trimmed);
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
