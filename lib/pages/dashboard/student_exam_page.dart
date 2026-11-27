@@ -344,7 +344,11 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
     setState(() => _submitting = true);
     try {
-      if (autoSubmit) {\n        try { await _flushAnswers(); } catch (_) { /* submit saved answers best-effort on expiry */ }\n      } else { await _flushAnswers(); }\n      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
+      if (autoSubmit) {
+        try { await _flushAnswers(); } catch (_) { /* submit saved answers best-effort on expiry */ }
+      } else {
+        await _flushAnswers();
+      }\n      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
       _timer?.cancel();
       if (!mounted) return;
       setState(() {
