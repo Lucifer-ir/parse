@@ -29,6 +29,9 @@ class _StudentExamPageState extends State<StudentExamPage> {
   final AudioRecorder _recorder = AudioRecorder();
   final Set<int> _recording = {};
   final Set<int> _audioLoading = {};
+  final Map<int, String> _recordedPaths = {};
+  int? _playingPromptId;
+  bool _promptPlaying = false;
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -246,8 +249,10 @@ class _StudentExamPageState extends State<StudentExamPage> {
       if (mounted) setState(() => _audioLoading.add(questionId));
       final uri = _mediaUri(rawUrl.trim());
       await _audioPlayer.stop();
+      if (mounted) setState(() { _playingPromptId = questionId; _promptPlaying = false; });
       await _audioPlayer.setUrl(uri.toString());
       await _audioPlayer.play();
+      if (mounted) setState(() => _promptPlaying = true);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -279,6 +284,18 @@ class _StudentExamPageState extends State<StudentExamPage> {
       if (mounted) setState(() => _audioNames[id] = (uploaded['file_name'] ?? path.split('/').last).toString());
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پاسخ صوتی ارسال شد.')));
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ارسال ضبط ناموفق بود: $e'))); }
+  }
+
+  Future<void> _sendRecordedSpeaking(int id) async {
+    final path = _recordedPaths[id];
+    if (path == null) return;
+    try {
+      if (mounted) setState(() => _audioUploading.add(id));
+      final bytes = await File(path).readAsBytes();
+      final uploaded = await ParseApi.uploadFile('exams/' + widget.examId.toString() + '/audio/' + id.toString(), bytes: bytes, filename: path.split('/').last);
+      if (mounted) setState(() { _audioNames[id] = (uploaded['file_name'] ?? path.split('/').last).toString(); _audioUploading.remove(id); _recordedPaths.remove(id); });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پاسخ صوتی ارسال شد.')));
+    } catch (e) { if (mounted) setState(() => _audioUploading.remove(id)); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ارسال ناموفق: $e'))); }
   }
 
   Widget _questionInput(Map<String, dynamic> question) {
@@ -316,6 +333,10 @@ class _StudentExamPageState extends State<StudentExamPage> {
               Expanded(child: FilledButton.icon(onPressed: uploading ? null : (_recording.contains(id) ? () => _stopSpeakingRecording(id) : () => _startSpeakingRecording(id)), icon: Icon(_recording.contains(id) ? Icons.stop_circle : Icons.mic), label: Text(_recording.contains(id) ? 'توقف ضبط' : 'ضبط پاسخ'))),
               const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: uploading ? null : () => _uploadSpeakingAudio(id), icon: const Icon(Icons.upload_file), label: Text(uploading ? 'در حال ارسال...' : 'انتخاب فایل'))),
             ]),
+            if(_recordedPaths.containsKey(id)) ...[
+              const SizedBox(height: 10),
+              Row(children: [Expanded(child: OutlinedButton.icon(onPressed: () async { await _audioPlayer.stop(); await _audioPlayer.setFilePath(_recordedPaths[id]!); await _audioPlayer.play(); },icon: const Icon(Icons.play_arrow),label: const Text('پخش ضبط'))),const SizedBox(width: 8),Expanded(child: FilledButton.icon(onPressed: uploading ? null : () => _sendRecordedSpeaking(id),icon: const Icon(Icons.cloud_upload),label: Text(uploading ? 'در حال ارسال...' : 'ارسال پاسخ')))])
+            ],
             if(name!=null) ...[
               const SizedBox(height: 6),
               Text('فایل ذخیره‌شده: $name',style: const TextStyle(color: Color(0xFF168F89),fontSize: 11)),
@@ -333,7 +354,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
         children: values.asMap().entries.map((entry) {
           final value = _optionId(entry.value, entry.key);
           final selected = _answers[id]?.toString() == value;
-          return Padding(padding: const EdgeInsets.only(bottom: 9), child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () { setState(() => _answers[id] = value); _scheduleSave(id); }, child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: selected ? const Color(0xFFE5F7F4) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: selected ? const Color(0xFF138C80) : const Color(0xFFE2E8ED), width: selected ? 1.8 : 1)), child: Row(children: [Container(width: 24,height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: selected ? const Color(0xFF138C80) : Colors.grey),color: selected ? const Color(0xFF138C80) : Colors.transparent), child: selected ? const Icon(Icons.check,color: Colors.white,size: 15) : null), const SizedBox(width: 12), Expanded(child: Text(_optionText(entry.value), style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w500, fontSize: 16), textDirection: TextDirection.rtl)), if(selected) const Icon(Icons.check_circle,color: Color(0xFF138C80))]))));
+          return Padding(padding: const EdgeInsets.only(bottom: 9), child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () { setState(() => _answers[id] = value); _scheduleSave(id); }, child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: selected ? const Color(0xFFE5F7F4) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: selected ? const Color(0xFF138C80) : const Color(0xFFE2E8ED), width: selected ? 1.8 : 1)), child: Row(children: [Container(width: 24,height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: selected ? const Color(0xFF138C80) : Colors.grey),color: selected ? const Color(0xFF138C80) : Colors.transparent), child: selected ? const Icon(Icons.check,color: Colors.white,size: 15) : null), const SizedBox(width: 12), Expanded(child: Text(_optionText(entry.value), style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w500, fontSize: 16), textDirection: TextDirection.rtl)), if(selected) const SizedBox.shrink()]))));
         }).toList(),
       );
     }
@@ -481,14 +502,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
           color: Colors.white,
           child: Row(children: [
             OutlinedButton(
-              onPressed: _index > 0 ? () => setState(() => _index--) : null,
+              onPressed: _index > 0 ? () async { await _audioPlayer.stop(); if (mounted) setState(() {_playingPromptId=null;_promptPlaying=false;_index--;}); } : null,
               child: const Text('قبلی'),
             ),
             const Spacer(),
             Text((_answers.containsKey(questionId) || _audioNames.containsKey(questionId)) ? 'پاسخ ثبت شده' : 'بدون پاسخ', style: const TextStyle(color: Color(0xFF77858E), fontSize: 12)),
             const Spacer(),
             if (_index < _questions.length - 1)
-              FilledButton(onPressed: () => setState(() => _index++), child: const Text('بعدی'))
+              FilledButton(onPressed: () async { await _audioPlayer.stop(); if (mounted) setState(() {_playingPromptId=null;_promptPlaying=false;_index++;}); }, child: const Text('بعدی'))
             else
               FilledButton(
                 onPressed: _submitting ? null : () => _submitExam(),
