@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,6 +28,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final AudioRecorder _recorder = AudioRecorder();
   final Set<int> _recording = {};
+  final Set<int> _audioLoading = {};
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -241,8 +243,8 @@ class _StudentExamPageState extends State<StudentExamPage> {
     _audioPlayCounts[questionId] = plays + 1;
     if (mounted) setState(() {});
     try {
-      final trimmed = rawUrl.trim();
-      final uri = _mediaUri(trimmed);
+      if (mounted) setState(() => _audioLoading.add(questionId));
+      final uri = _mediaUri(rawUrl.trim());
       await _audioPlayer.stop();
       await _audioPlayer.setUrl(uri.toString());
       await _audioPlayer.play();
@@ -252,13 +254,15 @@ class _StudentExamPageState extends State<StudentExamPage> {
           SnackBar(content: Text('پخش فایل صوتی ناموفق بود: $error')),
         );
       }
-    }
+    } finally { if (mounted) setState(() => _audioLoading.remove(questionId)); }
   }
 
   Future<void> _startSpeakingRecording(int id) async {
     try {
       if (!await _recorder.hasPermission()) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دسترسی میکروفون لازم است.'))); return; }
-      await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: 'parse_exam_${widget.examId}_question_$id.m4a');
+      final directory = await getTemporaryDirectory();
+      final path = '${directory.path}/parse_exam_${widget.examId}_question_$id.m4a';
+      await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
       if (mounted) setState(() => _recording.add(id));
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('شروع ضبط ناموفق بود: $e'))); }
   }
@@ -266,9 +270,11 @@ class _StudentExamPageState extends State<StudentExamPage> {
   Future<void> _stopSpeakingRecording(int id) async {
     try {
       final path = await _recorder.stop();
-      if (path == null) return;
+      if (path == null || path.isEmpty) throw ApiException('فایل ضبط‌شده پیدا نشد.');
       if (mounted) setState(() => _recording.remove(id));
-      final bytes = await File(path).readAsBytes();
+      final file = File(path);
+      if (!await file.exists()) throw ApiException('فایل ضبط‌شده در حافظه موقت موجود نیست.');
+      final bytes = await file.readAsBytes();
       final uploaded = await ParseApi.uploadFile('exams/${widget.examId}/audio/$id', bytes: bytes, filename: path.split('/').last);
       if (mounted) setState(() => _audioNames[id] = (uploaded['file_name'] ?? path.split('/').last).toString());
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پاسخ صوتی ارسال شد.')));
@@ -283,7 +289,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
       if (options.isEmpty) return const Text('گزینه‌های این سؤال در API ارسال نشده‌اند.');
       final current = (_answers[id] is List) ? List<dynamic>.from(_answers[id]) : options.map((o) => _optionId(o, options.indexOf(o))).toList();
       final display = current.map((v) => options.firstWhere((o) => _optionId(o, options.indexOf(o)) == v.toString(), orElse: () => {'text':v.toString()})).toList();
-      return ReorderableListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: display.length, onReorder: (oldIndex, newIndex) { if (newIndex > oldIndex) newIndex--; final ids = List<dynamic>.from(current); final item = ids.removeAt(oldIndex); ids.insert(newIndex, item); setState(() => _answers[id] = ids); _scheduleSave(id); }, itemBuilder: (context, index) => Card(key: ValueKey('${id}_${current[index]}'), child: ListTile(leading: const Icon(Icons.drag_handle), title: Text(_optionText(display[index])))));
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEAF5F4), borderRadius: BorderRadius.circular(12)), child: const Row(children: [Icon(Icons.touch_app,color: Color(0xFF168F89)), SizedBox(width: 8), Expanded(child: Text('برای تغییر ترتیب، گزینه را نگه دارید و جابه‌جا کنید.',style: TextStyle(fontSize: 12,color: Color(0xFF286C66))))])), const SizedBox(height: 10), ReorderableListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: display.length, onReorder: (oldIndex, newIndex) { if (newIndex > oldIndex) newIndex--; final ids = List<dynamic>.from(current); final item = ids.removeAt(oldIndex); ids.insert(newIndex, item); setState(() => _answers[id] = ids); _scheduleSave(id); }, itemBuilder: (context, index) => Padding(key: ValueKey('${id}_${current[index]}'),padding: const EdgeInsets.only(bottom: 8),child: Container(decoration: BoxDecoration(color: Colors.white,borderRadius: BorderRadius.circular(14),border: Border.all(color: const Color(0xFFE1E8EC))),child: ListTile(leading: Container(padding: const EdgeInsets.all(8),decoration: BoxDecoration(color: const Color(0xFFEAF5F4),borderRadius: BorderRadius.circular(8)),child: const Icon(Icons.drag_indicator,color: Color(0xFF168F89))),title: Text(_optionText(display[index]),style: const TextStyle(fontWeight: FontWeight.w700))))))]);
     }
     if (type == 'speaking') {
       final uploading = _audioUploading.contains(id);
@@ -320,20 +326,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
     if (type == 'multiple_choice' || type == 'true_false') {
       final values = type == 'true_false' ? <Map<String, dynamic>>[
-        {'id': 'true', 'text': 'درست'},
-        {'id': 'false', 'text': 'نادرست'},
+        {'id': 'true', 'text': 'True'},
+        {'id': 'false', 'text': 'False'},
       ] : options;
       return Column(
         children: values.asMap().entries.map((entry) {
           final value = _optionId(entry.value, entry.key);
-          return RadioListTile<String>(
-            value: value,
-            groupValue: _answers[id]?.toString(),
-            activeColor: const Color(0xFF168F89),
-            contentPadding: EdgeInsets.zero,
-            title: Text(_optionText(entry.value), textDirection: TextDirection.rtl),
-            onChanged: (next) { setState(() => _answers[id] = next); _scheduleSave(id); },
-          );
+          final selected = _answers[id]?.toString() == value;
+          return Padding(padding: const EdgeInsets.only(bottom: 9), child: InkWell(borderRadius: BorderRadius.circular(16), onTap: () { setState(() => _answers[id] = value); _scheduleSave(id); }, child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: selected ? const Color(0xFFE5F7F4) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: selected ? const Color(0xFF138C80) : const Color(0xFFE2E8ED), width: selected ? 1.8 : 1)), child: Row(children: [Container(width: 24,height: 24, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: selected ? const Color(0xFF138C80) : Colors.grey),color: selected ? const Color(0xFF138C80) : Colors.transparent), child: selected ? const Icon(Icons.check,color: Colors.white,size: 15) : null), const SizedBox(width: 12), Expanded(child: Text(_optionText(entry.value), style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w500, fontSize: 16), textDirection: TextDirection.rtl)), if(selected) const Icon(Icons.check_circle,color: Color(0xFF138C80))]))));
         }).toList(),
       );
     }
@@ -465,11 +465,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
                   Text(_typeLabel(type), style: const TextStyle(color: Color(0xFF168F89), fontSize: 12, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 14),
                   if ((question['audio_url'] ?? '').toString().trim().isNotEmpty) ...[
-                    OutlinedButton.icon(
-                      onPressed: (_audioPlayCounts[questionId] ?? 0) >= 2 ? null : () => _playAudioPrompt(questionId, question['audio_url'].toString()),
-                      icon: const Icon(Icons.volume_up_rounded),
-                      label: Text('پخش فایل صوتی سؤال (${2 - (_audioPlayCounts[questionId] ?? 0)} بار باقی‌مانده)'),
-                    ),
+                    Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF0F7F7),borderRadius: BorderRadius.circular(18),border: Border.all(color: const Color(0xFFDDEBEA))),child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,children: [Row(children: [const Icon(Icons.headphones_rounded,color: Color(0xFF138C80)),const SizedBox(width: 8),const Expanded(child: Text('فایل شنیداری',style: TextStyle(fontWeight: FontWeight.w800))),Text('${2 - (_audioPlayCounts[questionId] ?? 0)} بار',style: const TextStyle(fontSize: 11,color: Color(0xFF6A8280)))]),const SizedBox(height: 12),Row(children: List.generate(24,(i)=>Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 1),child: Container(height: [8,13,18,10,20,12,16,7,14,19,10,16,9,20,13,7,15,18,11,8,17,12,19,9][i],decoration: BoxDecoration(color: const Color(0xFF52B5A8),borderRadius: BorderRadius.circular(3))))))),const SizedBox(height: 12),FilledButton.icon(onPressed: (_audioPlayCounts[questionId] ?? 0) >= 2 || _audioLoading.contains(questionId) ? null : () => _playAudioPrompt(questionId, question['audio_url'].toString()),icon: _audioLoading.contains(questionId) ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.play_arrow_rounded),label: Text(_audioLoading.contains(questionId) ? 'در حال دریافت و آماده‌سازی...' : 'پخش داخل برنامه'))])),
                     const SizedBox(height: 10),
                   ],
                   Text(question['question_text']?.toString() ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.8)),

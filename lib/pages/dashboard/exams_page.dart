@@ -530,12 +530,8 @@ class _ExamCard extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
         onTap: () {
           HapticFeedback.selectionClick();
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => exam.id != null
-                ? StudentExamPage(examId: exam.id!, title: exam.title)
-                : ExamDetailPage(exam: exam)),
-          );
+          if (exam.status == 'انجام شده') { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شما قبلاً در این آزمون شرکت کرده‌اید.'))); return; }
+          Navigator.push(context, MaterialPageRoute(builder: (_) => exam.id != null ? StudentExamPage(examId: exam.id!, title: exam.title) : ExamDetailPage(exam: exam)));
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
