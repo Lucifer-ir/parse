@@ -348,7 +348,8 @@ class _StudentExamPageState extends State<StudentExamPage> {
         try { await _flushAnswers(); } catch (_) { /* submit saved answers best-effort on expiry */ }
       } else {
         await _flushAnswers();
-      }\n      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
+      }
+      final response = await ParseApi.post('exams/' + widget.examId.toString() + '/submit', {});
       _timer?.cancel();
       if (!mounted) return;
       setState(() {
