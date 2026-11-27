@@ -219,7 +219,14 @@ class _StudentExamPageState extends State<StudentExamPage> {
     }
   }
 
-  Uri _mediaUri(String rawUrl) {\n    final raw = rawUrl.trim();\n    final apiBase = Uri.parse(ParseApi.uri('').toString());\n    final path = raw.startsWith('http') ? Uri.parse(raw).path : raw;\n    final filePath = path.replaceFirst(RegExp(r'^/?api/?'), '').replaceFirst(RegExp(r'^/+'), '');\n    return Uri.https('panel.aiparseh.ir', '/$filePath');\n  }\n\n  Future<void> _playAudioPrompt(int questionId, String rawUrl) async {
+  Uri _mediaUri(String rawUrl) {
+    final raw = rawUrl.trim();
+    final path = raw.startsWith('http') ? Uri.parse(raw).path : raw;
+    final filePath = path.replaceFirst(RegExp(r'^/?api/?'), '').replaceFirst(RegExp(r'^/+'), '');
+    return Uri.https('panel.aiparseh.ir', '/$filePath');
+  }
+
+  Future<void> _playAudioPrompt(int questionId, String rawUrl) async {
     final plays = _audioPlayCounts[questionId] ?? 0;
     if (plays >= 2) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان پخش این فایل فقط دو بار وجود دارد.')));
