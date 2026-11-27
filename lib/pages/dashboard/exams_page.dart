@@ -366,7 +366,8 @@ class _ExamSummary extends StatelessWidget {
               Expanded(child: _SummaryValue(value: completed.toString(), label: 'تکمیل‌شده', icon: Icons.task_alt_rounded)),
             ]),
           ],
-        );
+        ),
+      );
   }
 }
 
