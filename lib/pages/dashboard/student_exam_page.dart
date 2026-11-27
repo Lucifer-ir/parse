@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:record/record.dart';
 import '../../core/api_client.dart';
 
 class StudentExamPage extends StatefulWidget {
@@ -21,6 +24,9 @@ class _StudentExamPageState extends State<StudentExamPage> {
   final Set<int> _audioUploading = {};
   final Map<int, String> _audioNames = {};
   final Map<int, int> _audioPlayCounts = {};
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioRecorder _recorder = AudioRecorder();
+  final Set<int> _recording = {};
   List<Map<String, dynamic>> _questions = [];
   int _index = 0;
   DateTime? _expiresAt;
@@ -237,25 +243,48 @@ class _StudentExamPageState extends State<StudentExamPage> {
     try {
       final trimmed = rawUrl.trim();
       final uri = _mediaUri(trimmed);
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('پخش فایل صوتی سؤال ممکن نشد.')),
-        );
-      }
+      await _audioPlayer.stop();
+      await _audioPlayer.setUrl(uri.toString());
+      await _audioPlayer.play();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('آدرس فایل صوتی معتبر نیست: $error')),
+          SnackBar(content: Text('پخش فایل صوتی ناموفق بود: $error')),
         );
       }
     }
+  }
+
+  Future<void> _startSpeakingRecording(int id) async {
+    try {
+      if (!await _recorder.hasPermission()) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دسترسی میکروفون لازم است.'))); return; }
+      await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: 'parse_exam_${widget.examId}_question_$id.m4a');
+      if (mounted) setState(() => _recording.add(id));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('شروع ضبط ناموفق بود: $e'))); }
+  }
+
+  Future<void> _stopSpeakingRecording(int id) async {
+    try {
+      final path = await _recorder.stop();
+      if (path == null) return;
+      if (mounted) setState(() => _recording.remove(id));
+      final bytes = await File(path).readAsBytes();
+      final uploaded = await ParseApi.uploadFile('exams/${widget.examId}/audio/$id', bytes: bytes, filename: path.split('/').last);
+      if (mounted) setState(() => _audioNames[id] = (uploaded['file_name'] ?? path.split('/').last).toString());
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('پاسخ صوتی ارسال شد.')));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ارسال ضبط ناموفق بود: $e'))); }
   }
 
   Widget _questionInput(Map<String, dynamic> question) {
     final id = int.parse(question['id'].toString());
     final type = (question['question_type'] ?? 'written').toString();
     final options = _options(question['options']);
+    if (type == 'ordering' || type == 'matching') {
+      if (options.isEmpty) return const Text('گزینه‌های این سؤال در API ارسال نشده‌اند.');
+      final current = (_answers[id] is List) ? List<dynamic>.from(_answers[id]) : options.map((o) => _optionId(o, options.indexOf(o))).toList();
+      final display = current.map((v) => options.firstWhere((o) => _optionId(o, options.indexOf(o)) == v.toString(), orElse: () => {'text':v.toString()})).toList();
+      return ReorderableListView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: display.length, onReorder: (oldIndex, newIndex) { if (newIndex > oldIndex) newIndex--; final ids = List<dynamic>.from(current); final item = ids.removeAt(oldIndex); ids.insert(newIndex, item); setState(() => _answers[id] = ids); _scheduleSave(id); }, itemBuilder: (context, index) => Card(key: ValueKey('${id}_${current[index]}'), child: ListTile(leading: const Icon(Icons.drag_handle), title: Text(_optionText(display[index])))));
+    }
     if (type == 'speaking') {
       final uploading = _audioUploading.contains(id);
       final restored = _answers[id] is Map ? (_answers[id]['file_name'] ?? '').toString() : '';
@@ -277,13 +306,10 @@ class _StudentExamPageState extends State<StudentExamPage> {
               style: TextStyle(fontSize: 12,height: 1.7,color: Color(0xFF77858E)),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: uploading ? null : () => _uploadSpeakingAudio(id),
-              icon: uploading
-                  ? const SizedBox(width: 17,height: 17,child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.mic_rounded),
-              label: Text(uploading ? 'در حال ارسال صوت...' : name == null ? 'انتخاب و ارسال فایل صوتی' : 'تعویض فایل صوتی'),
-            ),
+            Row(children: [
+              Expanded(child: FilledButton.icon(onPressed: uploading ? null : (_recording.contains(id) ? () => _stopSpeakingRecording(id) : () => _startSpeakingRecording(id)), icon: Icon(_recording.contains(id) ? Icons.stop_circle : Icons.mic), label: Text(_recording.contains(id) ? 'توقف ضبط' : 'ضبط پاسخ'))),
+              const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: uploading ? null : () => _uploadSpeakingAudio(id), icon: const Icon(Icons.upload_file), label: Text(uploading ? 'در حال ارسال...' : 'انتخاب فایل'))),
+            ]),
             if(name!=null) ...[
               const SizedBox(height: 6),
               Text('فایل ذخیره‌شده: $name',style: const TextStyle(color: Color(0xFF168F89),fontSize: 11)),
@@ -305,7 +331,7 @@ class _StudentExamPageState extends State<StudentExamPage> {
             groupValue: _answers[id]?.toString(),
             activeColor: const Color(0xFF168F89),
             contentPadding: EdgeInsets.zero,
-            title: Text('$value  ${_optionText(entry.value)}', textDirection: TextDirection.rtl),
+            title: Text(_optionText(entry.value), textDirection: TextDirection.rtl),
             onChanged: (next) { setState(() => _answers[id] = next); _scheduleSave(id); },
           );
         }).toList(),
@@ -378,6 +404,8 @@ class _StudentExamPageState extends State<StudentExamPage> {
     for (final controller in _textControllers.values) {
       controller.dispose();
     }
+    _audioPlayer.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 

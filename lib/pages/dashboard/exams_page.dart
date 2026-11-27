@@ -160,7 +160,7 @@ class _ExamsPageState extends State<ExamsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = filter == 0 ? _exams : filter == 1 ? _exams.where((e) => e.status != 'تکمیل نشده').toList() : _exams.where((e) => e.status == 'تکمیل نشده').toList();
+    final visible = filter == 0 ? _exams : filter == 1 ? _exams.where((e) => e.status == 'آماده شروع').toList() : _exams.where((e) => e.status == 'تکمیل نشده').toList();
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -216,12 +216,12 @@ class _ExamsPageState extends State<ExamsPage> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        const _ExamSummary(),
+                        _ExamSummary(exams: _exams),
                         const SizedBox(height: 22),
                         _FilterRow(
                           selected: filter,
                           allCount: _exams.length,
-                          availableCount: _exams.where((e) => e.status != 'تکمیل نشده').length,
+                          availableCount: _exams.where((e) => e.status == 'آماده شروع').length,
                           incompleteCount: _exams.where((e) => e.status == 'تکمیل نشده').length,
                           onChanged: (v) => setState(() => filter = v),
                         ),
@@ -303,10 +303,14 @@ class _ExamsPageState extends State<ExamsPage> {
 // ═══════════════════════════════════════════════════════════════════
 
 class _ExamSummary extends StatelessWidget {
-  const _ExamSummary();
+  final List<ExamItem> exams;
+  const _ExamSummary({required this.exams});
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final ready = exams.where((e) => e.status == 'آماده شروع').length;
+    final completed = exams.where((e) => e.status == 'انجام شده').length;
+    return Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -343,7 +347,7 @@ class _ExamSummary extends StatelessWidget {
                           color: ExamColors.primary, size: 12),
                       SizedBox(width: 4),
                       Text(
-                        '+12٪ این ماه',
+                        'آمار ثبت‌شده',
                         style: TextStyle(
                           color: ExamColors.primary,
                           fontSize: 10,
@@ -356,22 +360,14 @@ class _ExamSummary extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Row(
-              children: [
-                Expanded(
-                    child: _SummaryValue(
-                        value: '۲', label: 'آزمون آماده', icon: Icons.event_available_rounded)),
-                Expanded(
-                    child: _SummaryValue(
-                        value: '۸۵٪', label: 'بهترین نتیجه', icon: Icons.star_rounded)),
-                Expanded(
-                    child: _SummaryValue(
-                        value: '۳', label: 'تکمیل‌شده', icon: Icons.task_alt_rounded)),
-              ],
-            ),
+            Row(children: [
+              Expanded(child: _SummaryValue(value: ready.toString(), label: 'آماده شروع', icon: Icons.event_available_rounded)),
+              const Expanded(child: _SummaryValue(value: '—', label: 'بهترین نتیجه', icon: Icons.star_rounded)),
+              Expanded(child: _SummaryValue(value: completed.toString(), label: 'تکمیل‌شده', icon: Icons.task_alt_rounded)),
+            ]),
           ],
-        ),
-      );
+        );
+  }
 }
 
 class _SummaryValue extends StatelessWidget {
@@ -526,7 +522,7 @@ class _ExamCard extends StatelessWidget {
 
   String get _statusLabel => exam.status;
 
-  bool get _isReady => exam.status == 'آماده شروع' || exam.status == 'پیشنهاد پارسه';
+  bool get _isReady => exam.status == 'آماده شروع';
   bool get _isIncomplete => exam.status == 'تکمیل نشده';
 
   @override
