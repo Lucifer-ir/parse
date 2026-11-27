@@ -293,10 +293,10 @@ class _StudentExamPageState extends State<StudentExamPage> {
       );
     }
     if (type == 'multiple_choice' || type == 'true_false') {
-      final values = options.isNotEmpty ? options : [
+      final values = type == 'true_false' ? <Map<String, dynamic>>[
         {'id': 'true', 'text': 'درست'},
         {'id': 'false', 'text': 'نادرست'},
-      ];
+      ] : options;
       return Column(
         children: values.asMap().entries.map((entry) {
           final value = _optionId(entry.value, entry.key);

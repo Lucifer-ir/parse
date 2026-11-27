@@ -29,7 +29,8 @@ class _ExercisesPageState extends State<ExercisesPage> {
   Future<void> _loadActivities() async {
     try {
       final response = await ParseApi.get('activities');
-      final rows = (response['rows'] ?? response['activities'] ?? response['items'] ?? response['data'] ?? const []) as List
+      final rawRows = response['rows'] ?? response['activities'] ?? response['items'] ?? response['data'] ?? const [];
+      final rows = (rawRows is List ? rawRows : const <dynamic>[])
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
